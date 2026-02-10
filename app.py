@@ -879,7 +879,7 @@ def saweria_webhook():
             f"💎 Plan: <b>{plan_type}</b>\n"
             f"💰 Jumlah: Rp {amount:,}\n"
             f"📅 Berlaku sampai: <b>{expires_text}</b>\n\n"
-            "Terima kasih telah berlangganan TG-DramaChina VIP! 🎬"
+            "Terima kasih telah berlangganan Drama China VIP! 🎬"
         )
         send_telegram_notification(telegram_id, notification)
 
@@ -950,7 +950,7 @@ def run_bot():
                 logger.error(f"User register error: {e}")
 
         welcome_text = (
-            "🎬 <b>Selamat datang di DramaBox!</b>\n\n"
+            "🎬 <b>Selamat datang di Drama China!</b>\n\n"
             "Nikmati ribuan drama China, Korea & Asia lainnya "
             "langsung dari Telegram!\n\n"
             "📺 Tap <b>Buka Aplikasi</b> untuk mulai menonton\n"

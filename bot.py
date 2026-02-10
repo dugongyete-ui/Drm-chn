@@ -49,7 +49,7 @@ async def start_handler(message: types.Message):
             logger.error(f"User register error: {e}")
 
     welcome_text = (
-        "🎬 <b>Welcome to DramaBox!</b>\n\n"
+        "🎬 <b>Selamat datang di Drama China!</b>\n\n"
         "Nikmati ribuan drama China, Korea & Asia lainnya "
         "langsung dari Telegram!\n\n"
         "📺 Tap <b>Open App</b> untuk mulai menonton.\n"
