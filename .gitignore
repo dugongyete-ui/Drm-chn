@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+.pythonlibs/
+.uv/
+
+# Environment
+.env
+*.log

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DramaBox</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+    <div id="app">
+        <div id="page-home" class="page active">
+            <div class="header">
+                <h1 class="logo">DramaBox</h1>
+                <button class="btn-icon" onclick="showRandomDrama()"><i class="fas fa-dice"></i></button>
+            </div>
+            <div class="search-container" onclick="showPage('search')">
+                <div class="search-bar-fake">
+                    <i class="fas fa-search"></i>
+                    <span>Search dramas...</span>
+                </div>
+            </div>
+            <div class="tabs-container">
+                <div class="tabs" id="home-tabs">
+                    <button class="tab active" data-tab="foryou" onclick="switchHomeTab(this, 'foryou')">For You</button>
+                    <button class="tab" data-tab="latest" onclick="switchHomeTab(this, 'latest')">Latest</button>
+                    <button class="tab" data-tab="trending" onclick="switchHomeTab(this, 'trending')">Trending</button>
+                    <button class="tab" data-tab="dubindo" onclick="switchHomeTab(this, 'dubindo')">Dub Indo</button>
+                </div>
+            </div>
+            <div class="content-area" id="home-content">
+                <div class="loading-spinner"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <div id="page-search" class="page">
+            <div class="header">
+                <button class="btn-icon" onclick="showPage('home')"><i class="fas fa-arrow-left"></i></button>
+                <div class="search-bar-real">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="Search dramas..." oninput="handleSearch(this.value)">
+                    <button class="btn-clear" onclick="clearSearch()"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div id="search-suggestions" class="search-suggestions"></div>
+            <div id="search-results" class="content-grid"></div>
+        </div>
+
+        <div id="page-detail" class="page">
+            <div class="header">
+                <button class="btn-icon" onclick="goBackFromDetail()"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="header-title" id="detail-header-title">Detail</h2>
+                <button class="btn-icon" id="btn-fav" onclick="toggleFavorite()"><i class="far fa-heart"></i></button>
+            </div>
+            <div id="detail-content" class="detail-content"></div>
+        </div>
+
+        <div id="page-player" class="page">
+            <div class="header">
+                <button class="btn-icon" onclick="showPage('detail')"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="header-title" id="player-title">Episode</h2>
+            </div>
+            <div class="player-container">
+                <video id="video-player" controls playsinline></video>
+            </div>
+            <div id="episode-list" class="episode-list"></div>
+        </div>
+
+        <div id="page-library" class="page">
+            <div class="header">
+                <h2 class="header-title">Library</h2>
+            </div>
+            <div class="tabs-container">
+                <div class="tabs">
+                    <button class="tab active" onclick="switchLibTab(this, 'history')">Riwayat</button>
+                    <button class="tab" onclick="switchLibTab(this, 'favorites')">Favorit</button>
+                </div>
+            </div>
+            <div id="library-content" class="content-area"></div>
+        </div>
+
+        <div id="page-profile" class="page">
+            <div class="header">
+                <h2 class="header-title">Profile</h2>
+            </div>
+            <div id="profile-content" class="profile-content"></div>
+        </div>
+
+        <div id="page-help" class="page">
+            <div class="header">
+                <button class="btn-icon" onclick="showPage('profile')"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="header-title">Help Center</h2>
+            </div>
+            <div class="help-content">
+                <div class="form-group">
+                    <label>Issue Type</label>
+                    <select id="issue-type" class="form-input">
+                        <option value="">Select issue type</option>
+                        <option value="Video tidak bisa diputar">Video tidak bisa diputar</option>
+                        <option value="Subtitle error">Subtitle error</option>
+                        <option value="Episode hilang">Episode hilang</option>
+                        <option value="Bug/Error lainnya">Bug/Error lainnya</option>
+                        <option value="Saran fitur">Saran fitur</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="issue-desc" class="form-input" rows="5" placeholder="Jelaskan masalah yang kamu alami..."></textarea>
+                </div>
+                <button class="btn-primary btn-full" onclick="submitReport()">
+                    <i class="fas fa-paper-plane"></i> Send Report
+                </button>
+            </div>
+        </div>
+
+        <nav class="bottom-nav" id="bottom-nav">
+            <button class="nav-item active" onclick="showPage('home')">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </button>
+            <button class="nav-item" onclick="showPage('library')">
+                <i class="fas fa-book"></i>
+                <span>Library</span>
+            </button>
+            <button class="nav-item" onclick="showPage('profile')">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </button>
+        </nav>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
