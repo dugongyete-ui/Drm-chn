@@ -16,6 +16,12 @@ Drama China is a Telegram Mini App for streaming Chinese and Asian dramas. It fe
 .
 ├── app.py                  # Main Flask app + Telegram bot
 ├── bot.py                  # Standalone bot (not used when app.py runs)
+├── wsgi.py                 # Gunicorn entry point (auto-starts bot + keep-alive)
+├── keep_alive.py           # Anti-sleep ping mechanism for Koyeb
+├── Dockerfile              # Docker config for Koyeb deployment
+├── requirements.txt        # Python dependencies
+├── start.sh                # Alternative startup script
+├── DEPLOY_KOYEB.md         # Deployment guide for Koyeb free tier
 ├── templates/
 │   └── index.html          # Single-page app HTML
 ├── static/
@@ -69,6 +75,14 @@ Drama China is a Telegram Mini App for streaming Chinese and Asian dramas. It fe
 - **Page transitions**: Smooth enter/exit animations between pages
 - **Card animations**: Staggered card entrance animations with scale/opacity effects
 - **Modern navigation**: Bottom nav with active indicator animations
+
+## Koyeb Deployment
+- Dockerfile ready for Koyeb free tier deployment
+- wsgi.py as gunicorn entry point (auto-starts bot thread + keep-alive)
+- keep_alive.py pings /health every 4 minutes to prevent sleep
+- Health check endpoint at /health
+- Workers: 1 (free tier memory limit), Threads: 4
+- See DEPLOY_KOYEB.md for full deployment instructions
 
 ## User Preferences
 - Language: Indonesian (Bahasa Indonesia) for all UI text
