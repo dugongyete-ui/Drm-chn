@@ -22,10 +22,13 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 API_BASE = 'https://api.sansekai.my.id/api/dramabox'
 SAWERIA_STREAM_KEY = os.environ.get('SAWERIA_STREAM_KEY', '')
 def get_webapp_domain():
-    if os.environ.get('WEBAPP_URL'):
-        return os.environ['WEBAPP_URL']
-    if os.environ.get('KOYEB_PUBLIC_DOMAIN'):
-        return f"https://{os.environ['KOYEB_PUBLIC_DOMAIN']}"
+    webapp_url = os.environ.get('WEBAPP_URL', '')
+    if webapp_url:
+        return webapp_url.rstrip('/')
+    if os.environ.get('REPLIT_DEPLOYMENT') == '1':
+        domains = os.environ.get('REPLIT_DOMAINS', '')
+        if domains:
+            return f"https://{domains.split(',')[0]}"
     if os.environ.get('REPLIT_DEV_DOMAIN'):
         return f"https://{os.environ['REPLIT_DEV_DOMAIN']}"
     return 'http://localhost:5000'
@@ -847,6 +850,10 @@ def saweria_webhook():
             SAWERIA_STREAM_KEY.encode('utf-8'),
             raw_body,
             hashlib.sha256
+        ).hexdigest() if hasattr(hmac, 'new') else hmac.HMAC(
+            SAWERIA_STREAM_KEY.encode('utf-8'),
+            raw_body,
+            hashlib.sha256
         ).hexdigest()
         logger.info(f"Saweria signature check - received: {signature[:16]}..., expected: {expected_sig[:16]}...")
         if not hmac.compare_digest(signature, expected_sig):
@@ -940,7 +947,16 @@ def run_bot():
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, FSInputFile
     from aiogram.enums import ParseMode
 
-    WEBAPP_URL = os.environ.get('WEBAPP_URL', f"https://{os.environ.get('REPLIT_DEV_DOMAIN', 'localhost:5000')}")
+    webapp_env = os.environ.get('WEBAPP_URL', '')
+    if webapp_env:
+        WEBAPP_URL = webapp_env.rstrip('/')
+    elif os.environ.get('REPLIT_DEPLOYMENT') == '1':
+        domains = os.environ.get('REPLIT_DOMAINS', '')
+        WEBAPP_URL = f"https://{domains.split(',')[0]}" if domains else ''
+    elif os.environ.get('REPLIT_DEV_DOMAIN'):
+        WEBAPP_URL = f"https://{os.environ['REPLIT_DEV_DOMAIN']}"
+    else:
+        WEBAPP_URL = 'http://localhost:5000'
 
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()

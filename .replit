@@ -1,8 +1,7 @@
-modules = ["nodejs-20", "python-3.11", "postgresql-16"]
+modules = ["python-3.11", "postgresql-16"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["vercel-pkg"]
 
 [agent]
 expertMode = true
@@ -36,10 +35,10 @@ localPort = 5000
 externalPort = 80
 
 [deployment]
-deploymentTarget = "vm"
-run = ["python", "app.py"]
+deploymentTarget = "autoscale"
+run = ["gunicorn", "--bind=0.0.0.0:5000", "--workers=1", "--threads=4", "--timeout=120", "wsgi:app"]
 
 [userenv]
 
 [userenv.shared]
-WEBAPP_URL = "https://504a895b-1db5-4667-a790-430417df55ea-00-305ofdeeu239h.picard.replit.dev/"
+WEBAPP_URL = "https://64c0e05f-a930-4e9f-bade-367bdeb9ef87-00-xfi37yxqyn73.janeway.replit.dev/"
