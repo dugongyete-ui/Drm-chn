@@ -115,6 +115,9 @@ async function checkUserAccess() {
 }
 
 function stopVideoPlayer() {
+    if (isCustomFullscreen) {
+        exitCustomFullscreen();
+    }
     const player = document.getElementById('video-player');
     if (player) {
         player.pause();
@@ -1143,5 +1146,48 @@ function loadUpgradePage() {
         statusEl.innerHTML = '';
     }
 }
+
+let isCustomFullscreen = false;
+
+function toggleCustomFullscreen() {
+    const container = document.getElementById('player-container');
+    const btn = document.getElementById('btn-fullscreen');
+    const video = document.getElementById('video-player');
+
+    if (!isCustomFullscreen) {
+        container.classList.add('fullscreen-mode');
+        btn.innerHTML = '<i class="fas fa-compress"></i>';
+        isCustomFullscreen = true;
+
+        document.body.style.overflow = 'hidden';
+
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(() => {});
+        }
+    } else {
+        exitCustomFullscreen();
+    }
+}
+
+function exitCustomFullscreen() {
+    const container = document.getElementById('player-container');
+    const btn = document.getElementById('btn-fullscreen');
+
+    container.classList.remove('fullscreen-mode', 'landscape');
+    btn.innerHTML = '<i class="fas fa-expand"></i>';
+    isCustomFullscreen = false;
+
+    document.body.style.overflow = '';
+
+    if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+    }
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && isCustomFullscreen) {
+        exitCustomFullscreen();
+    }
+});
 
 document.addEventListener('DOMContentLoaded', initApp);
