@@ -649,6 +649,145 @@ def update_settings(telegram_id):
         cur.close()
         conn.close()
 
+@app.route('/api/stats/monthly')
+def monthly_stats():
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        now = datetime.now()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        cur.execute("SELECT COUNT(*) as total_users FROM users")
+        total_users = cur.fetchone()['total_users']
+
+        cur.execute("SELECT COUNT(*) as new_users FROM users WHERE created_at >= %s", (month_start,))
+        new_users = cur.fetchone()['new_users']
+
+        cur.execute("SELECT COUNT(*) as active_users FROM users WHERE updated_at >= %s", (month_start,))
+        active_users = cur.fetchone()['active_users']
+
+        cur.execute("SELECT COUNT(*) as vip_users FROM users WHERE membership = 'VIP' AND (membership_expires_at IS NULL OR membership_expires_at > %s)", (now,))
+        vip_users = cur.fetchone()['vip_users']
+
+        cur.execute("SELECT COUNT(*) as total_watches FROM watch_history WHERE watched_at >= %s", (month_start,))
+        total_watches = cur.fetchone()['total_watches']
+
+        cur.execute("SELECT COUNT(*) as total_favorites FROM favorites WHERE created_at >= %s", (month_start,))
+        total_favorites = cur.fetchone()['total_favorites']
+
+        cur.execute("SELECT COUNT(*) as total_referrals FROM referral_logs WHERE created_at >= %s", (month_start,))
+        total_referrals = cur.fetchone()['total_referrals']
+
+        cur.execute("SELECT COALESCE(SUM(amount), 0) as total_revenue, COUNT(*) as total_transactions FROM subscriptions WHERE created_at >= %s AND status = 'active'", (month_start,))
+        revenue_data = cur.fetchone()
+        total_revenue = revenue_data['total_revenue']
+        total_transactions = revenue_data['total_transactions']
+
+        cur.execute("SELECT COUNT(*) as total_reports FROM reports WHERE created_at >= %s", (month_start,))
+        total_reports = cur.fetchone()['total_reports']
+
+        cur.execute("""
+            SELECT DATE(created_at) as date, COUNT(*) as count
+            FROM users WHERE created_at >= %s
+            GROUP BY DATE(created_at) ORDER BY date
+        """, (month_start,))
+        daily_signups = [{"date": str(r['date']), "count": r['count']} for r in cur.fetchall()]
+
+        return jsonify({
+            "month": now.strftime('%B %Y'),
+            "total_users": total_users,
+            "new_users_this_month": new_users,
+            "active_users_this_month": active_users,
+            "vip_users": vip_users,
+            "total_watches_this_month": total_watches,
+            "total_favorites_this_month": total_favorites,
+            "total_referrals_this_month": total_referrals,
+            "total_revenue_this_month": total_revenue,
+            "total_transactions_this_month": total_transactions,
+            "total_reports_this_month": total_reports,
+            "daily_signups": daily_signups
+        })
+    except Exception as e:
+        logger.error(f"Monthly stats error: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+@app.route('/api/stats/test-saweria', methods=['POST'])
+def test_saweria_webhook():
+    admin_id = get_admin_id()
+    if not admin_id:
+        return jsonify({"error": "Admin not configured"}), 403
+
+    request_telegram_id = request.json.get('admin_telegram_id')
+    if not request_telegram_id or int(request_telegram_id) != admin_id:
+        return jsonify({"error": "Admin only"}), 403
+
+    test_data = request.json
+    telegram_id = test_data.get('telegram_id', admin_id)
+    amount = int(test_data.get('amount', 5000))
+    transaction_id = f"test_{int(time.time())}_{telegram_id}"
+
+    plan_type, duration = determine_plan(amount)
+    if not plan_type:
+        return jsonify({"error": f"Amount {amount} too low for any plan", "min_amount": 5000}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM subscriptions WHERE saweria_transaction_id = %s", (transaction_id,))
+        if cur.fetchone():
+            return jsonify({"status": "already_processed"})
+
+        now = datetime.now()
+        expires_at = (now + duration) if duration else None
+
+        cur.execute("""
+            INSERT INTO subscriptions (telegram_id, saweria_transaction_id, plan_type, amount, donator_name, donator_email, status, activated_at, expires_at)
+            VALUES (%s, %s, %s, %s, %s, %s, 'active', %s, %s)
+            RETURNING *
+        """, (telegram_id, transaction_id, plan_type, amount, 'Test User', 'test@test.com', now, expires_at))
+        sub = dict(cur.fetchone())
+
+        cur.execute("""
+            UPDATE users SET membership = 'VIP', membership_expires_at = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE telegram_id = %s
+            RETURNING membership, membership_expires_at
+        """, (expires_at, telegram_id))
+        user_update = cur.fetchone()
+
+        conn.commit()
+
+        expires_text = expires_at.strftime('%d %B %Y %H:%M') if expires_at else 'Lifetime'
+        notification = (
+            "🧪 <b>TEST - Pembayaran Berhasil!</b>\n\n"
+            f"💎 Plan: <b>{plan_type}</b>\n"
+            f"💰 Jumlah: Rp {amount:,}\n"
+            f"📅 Berlaku sampai: <b>{expires_text}</b>\n\n"
+            "Ini adalah transaksi test."
+        )
+        send_telegram_notification(telegram_id, notification)
+
+        return jsonify({
+            "status": "ok",
+            "test": True,
+            "plan": plan_type,
+            "amount": amount,
+            "telegram_id": telegram_id,
+            "expires_at": expires_at.isoformat() if expires_at else None,
+            "transaction_id": transaction_id,
+            "subscription": sub,
+            "user_membership": dict(user_update) if user_update else None
+        })
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Test saweria error: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
 def determine_plan(amount):
     if amount >= 250000:
         return "1 Year VIP", timedelta(days=365)
@@ -684,6 +823,7 @@ def saweria_webhook():
             raw_body,
             hashlib.sha256
         ).hexdigest()
+        logger.info(f"Saweria signature check - received: {signature[:16]}..., expected: {expected_sig[:16]}...")
         if not hmac.compare_digest(signature, expected_sig):
             logger.warning("Saweria webhook signature mismatch")
             return jsonify({"error": "Invalid signature"}), 403
@@ -772,7 +912,7 @@ def run_bot():
 
     from aiogram import Bot, Dispatcher, types as aitypes
     from aiogram.filters import CommandStart
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, FSInputFile
     from aiogram.enums import ParseMode
 
     WEBAPP_URL = os.environ.get('WEBAPP_URL', f"https://{os.environ.get('REPLIT_DEV_DOMAIN', 'localhost:5000')}")
@@ -810,12 +950,17 @@ def run_bot():
                 logger.error(f"User register error: {e}")
 
         welcome_text = (
-            "🎬 <b>Selamat datang di TG-DramaChina!</b>\n\n"
-            "Nikmati ribuan drama China & Asia lainnya "
+            "🎬 <b>Selamat datang di DramaBox!</b>\n\n"
+            "Nikmati ribuan drama China, Korea & Asia lainnya "
             "langsung dari Telegram!\n\n"
-            "📺 Tap <b>Buka Aplikasi</b> untuk mulai menonton.\n"
+            "📺 Tap <b>Buka Aplikasi</b> untuk mulai menonton\n"
             "💎 Undang 3 teman untuk akses penuh 24 jam GRATIS!\n"
-            "👑 Atau upgrade ke VIP untuk akses tanpa batas."
+            "👑 Atau upgrade ke VIP untuk akses tanpa batas\n\n"
+            "🎭 <b>Fitur Unggulan:</b>\n"
+            "• Streaming drama terbaru\n"
+            "• Simpan favorit & riwayat tontonan\n"
+            "• Sistem referral berhadiah\n"
+            "• VIP akses semua episode"
         )
 
         rows = []
@@ -826,7 +971,12 @@ def run_bot():
             rows.append([InlineKeyboardButton(text="🎬 Buka Aplikasi", web_app=WebAppInfo(url=webapp_url))])
         keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
 
-        await message.answer(welcome_text, parse_mode=ParseMode.HTML, reply_markup=keyboard)
+        banner_path = os.path.join(os.path.dirname(__file__), 'static', 'images', 'welcome_banner.png')
+        if os.path.exists(banner_path):
+            photo = FSInputFile(banner_path)
+            await message.answer_photo(photo=photo, caption=welcome_text, parse_mode=ParseMode.HTML, reply_markup=keyboard)
+        else:
+            await message.answer(welcome_text, parse_mode=ParseMode.HTML, reply_markup=keyboard)
 
         if ref_code and ref_code.startswith('ref_') and WEBAPP_URL:
             try:
