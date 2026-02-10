@@ -5,12 +5,25 @@ echo "========================================="
 echo ""
 
 PYTHON_CMD=""
-if command -v python3 &> /dev/null; then
-    PYTHON_CMD="python3"
-elif command -v python &> /dev/null; then
-    PYTHON_CMD="python"
-else
-    echo "[ERROR] Python not found. Please install Python 3.11+ first."
+for cmd in python3 python python3.11 python3.12; do
+    if command -v "$cmd" &> /dev/null; then
+        PYTHON_CMD="$cmd"
+        break
+    fi
+done
+
+if [ -z "$PYTHON_CMD" ]; then
+    NIX_PYTHON=$(find /nix/store -maxdepth 2 -name "python3" -type f 2>/dev/null | head -1)
+    if [ -n "$NIX_PYTHON" ]; then
+        PYTHON_CMD="$NIX_PYTHON"
+    fi
+fi
+
+if [ -z "$PYTHON_CMD" ]; then
+    echo "[ERROR] Python not found."
+    echo "[INFO] Jika di Replit, Python sudah terinstall otomatis."
+    echo "[INFO] Coba jalankan: python3 --version"
+    echo "[INFO] Atau install Python melalui menu Tools > Packages"
     exit 1
 fi
 
@@ -20,11 +33,15 @@ echo "[INFO] Using $PYTHON_VERSION"
 if command -v uv &> /dev/null; then
     echo "[1/3] Installing Python dependencies with uv..."
     uv add aiogram aiohttp flask psycopg2-binary gunicorn requests
+elif command -v pip3 &> /dev/null; then
+    echo "[1/3] Installing Python dependencies with pip3..."
+    pip3 install aiogram aiohttp flask psycopg2-binary gunicorn requests
 elif command -v pip &> /dev/null; then
     echo "[1/3] Installing Python dependencies with pip..."
     pip install aiogram aiohttp flask psycopg2-binary gunicorn requests
 else
-    echo "[ERROR] No package manager found (uv or pip). Please install one."
+    echo "[ERROR] No package manager found (uv, pip3, or pip)."
+    echo "[INFO] Di Replit, gunakan 'uv add <package>' untuk install."
     exit 1
 fi
 echo ""

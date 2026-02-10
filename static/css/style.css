@@ -43,9 +43,11 @@ body {
 }
 
 #app {
-    max-width: 480px;
+    width: 100%;
+    max-width: 100%;
     margin: 0 auto;
     min-height: 100vh;
+    min-height: 100dvh;
     position: relative;
     padding-bottom: var(--nav-height);
 }
@@ -1080,10 +1082,8 @@ body {
 .bottom-nav {
     position: fixed;
     bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
     width: 100%;
-    max-width: 480px;
     background: rgba(20, 20, 20, 0.95);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
