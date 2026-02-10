@@ -48,6 +48,7 @@ Bot Telegram untuk streaming drama China, Korea & Asia. Terintegrasi dengan Dram
 - Logika: jumlah donasi menentukan paket (threshold tertinggi yang terpenuhi)
 
 ## Recent Changes
+- 2026-02-10: Website redirects non-Telegram users to bot (banner + modal on play attempt)
 - 2026-02-10: Auto-play next episode now plays immediately (removed 5-second countdown)
 - 2026-02-10: Changed minimum VIP plan from Rp 5.000 to Rp 3.000
 - 2026-02-10: Added auto-play next episode feature (5-second countdown with cancel/play now buttons)

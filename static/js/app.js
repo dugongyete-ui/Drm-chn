@@ -19,10 +19,42 @@ let userHasFullAccess = false;
 let currentEpisodeIndex = -1;
 
 const tg = window.Telegram?.WebApp;
+const BOT_USERNAME = 'tgdrama_bot';
+const isInTelegram = !!(tg && tg.initDataUnsafe?.user);
 
 function getUrlParam(name) {
     const params = new URLSearchParams(window.location.search);
     return params.get(name);
+}
+
+function showTelegramRedirectModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    modal.innerHTML = `
+        <div class="modal-content modal-enter">
+            <div class="modal-body" style="text-align:center;padding:32px 24px;">
+                <div class="locked-icon-wrapper" style="background:linear-gradient(135deg,#0088cc,#00b4d8)">
+                    <i class="fab fa-telegram-plane"></i>
+                </div>
+                <h3 style="margin-bottom:8px;font-size:20px">Buka di Telegram</h3>
+                <p style="margin-bottom:20px;color:var(--text-secondary);font-size:14px">Untuk menonton drama, silakan buka melalui bot Telegram kami</p>
+                <div class="locked-options">
+                    <div class="locked-option">
+                        <i class="fab fa-telegram-plane" style="color:#0088cc"></i>
+                        <div>
+                            <strong>Drama China Bot</strong>
+                            <span>Tonton gratis di Telegram</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-ghost" onclick="this.closest('.modal-overlay').remove()">Tutup</button>
+                    <a href="https://t.me/${BOT_USERNAME}?startapp" target="_blank" class="btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px"><i class="fab fa-telegram-plane"></i> Buka Bot</a>
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
 }
 
 function initApp() {
@@ -55,7 +87,29 @@ function initApp() {
         };
     }
 
+    if (!isInTelegram) {
+        showTelegramBanner();
+    }
+
     loadHomeContent('foryou');
+}
+
+function showTelegramBanner() {
+    const banner = document.createElement('div');
+    banner.id = 'telegram-banner';
+    banner.innerHTML = `
+        <div style="background:linear-gradient(135deg,#0088cc,#00b4d8);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer" onclick="window.open('https://t.me/${BOT_USERNAME}?startapp','_blank')">
+            <div style="display:flex;align-items:center;gap:10px;color:white">
+                <i class="fab fa-telegram-plane" style="font-size:20px"></i>
+                <div>
+                    <div style="font-weight:600;font-size:13px">Tonton di Telegram</div>
+                    <div style="font-size:11px;opacity:0.9">Buka bot untuk pengalaman terbaik</div>
+                </div>
+            </div>
+            <div style="color:white;font-size:12px;white-space:nowrap;background:rgba(255,255,255,0.2);padding:6px 12px;border-radius:20px;font-weight:600">Buka Bot</div>
+        </div>`;
+    const app = document.getElementById('app');
+    app.insertBefore(banner, app.firstChild);
 }
 
 async function registerUser() {
@@ -594,6 +648,11 @@ function getEpNum(ep, index) {
 }
 
 async function playEpisode(index) {
+    if (!isInTelegram) {
+        showTelegramRedirectModal();
+        return;
+    }
+
     const ep = currentEpisodes[index];
     if (!ep) return;
 
