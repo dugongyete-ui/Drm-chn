@@ -759,7 +759,7 @@ def test_saweria_webhook():
 
     plan_type, duration = determine_plan(amount)
     if not plan_type:
-        return jsonify({"error": f"Amount {amount} too low for any plan", "min_amount": 5000}), 400
+        return jsonify({"error": f"Amount {amount} too low for any plan", "min_amount": 3000}), 400
 
     conn = get_db()
     cur = conn.cursor()
@@ -823,7 +823,7 @@ def determine_plan(amount):
         return "1 Month VIP", timedelta(days=30)
     elif amount >= 10000:
         return "2 Weeks VIP", timedelta(days=14)
-    elif amount >= 5000:
+    elif amount >= 3000:
         return "3 Days VIP", timedelta(days=3)
     return None, None
 

@@ -43,7 +43,7 @@ run = ["gunicorn", "--bind=0.0.0.0:5000", "--workers=1", "--threads=4", "--timeo
 [userenv.shared]
 
 [userenv.development]
-WEBAPP_URL = "https://7b4d84ad-7f29-4827-819f-a8c974d60e86-00-21rmglgj0fvf.spock.replit.dev/"
+WEBAPP_URL = "https://143faab4-d30f-471f-89ed-363eccef1d33-00-bxlqjrort3bs.riker.replit.dev/"
 
 [userenv.production]
 WEBAPP_URL = ""

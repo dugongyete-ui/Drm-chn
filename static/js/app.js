@@ -674,56 +674,7 @@ function handleEpisodeEnded() {
         return;
     }
 
-    showAutoPlayCountdown(nextIndex);
-}
-
-function showAutoPlayCountdown(nextIndex) {
-    clearAutoPlayTimer();
-    autoPlayCountdown = 5;
-
-    const nextEpNum = getEpNum(currentEpisodes[nextIndex], nextIndex);
-
-    let overlay = document.getElementById('autoplay-overlay');
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'autoplay-overlay';
-        overlay.className = 'autoplay-overlay';
-        document.getElementById('player-container').appendChild(overlay);
-    }
-
-    function updateOverlay() {
-        overlay.innerHTML = `
-            <div class="autoplay-content">
-                <div class="autoplay-countdown-circle">
-                    <svg viewBox="0 0 36 36">
-                        <path class="autoplay-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                        <path class="autoplay-circle-fg" stroke-dasharray="${(autoPlayCountdown / 5) * 100}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                    </svg>
-                    <span class="autoplay-number">${autoPlayCountdown}</span>
-                </div>
-                <div class="autoplay-info">
-                    <div class="autoplay-label">Episode berikutnya</div>
-                    <div class="autoplay-ep-name">${currentDrama.title} - ${nextEpNum}</div>
-                </div>
-                <div class="autoplay-actions">
-                    <button class="btn-autoplay-cancel" onclick="cancelAutoPlay()">Batal</button>
-                    <button class="btn-autoplay-now" onclick="clearAutoPlayTimer();playEpisode(${nextIndex})"><i class="fas fa-play"></i> Putar Sekarang</button>
-                </div>
-            </div>`;
-        overlay.style.display = 'flex';
-    }
-
-    updateOverlay();
-
-    autoPlayTimer = setInterval(() => {
-        autoPlayCountdown--;
-        if (autoPlayCountdown <= 0) {
-            clearAutoPlayTimer();
-            playEpisode(nextIndex);
-        } else {
-            updateOverlay();
-        }
-    }, 1000);
+    playEpisode(nextIndex);
 }
 
 function cancelAutoPlay() {
