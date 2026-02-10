@@ -21,7 +21,16 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dramabox-secret-key-202
 DATABASE_URL = os.environ.get('DATABASE_URL')
 API_BASE = 'https://api.sansekai.my.id/api/dramabox'
 SAWERIA_STREAM_KEY = os.environ.get('SAWERIA_STREAM_KEY', '')
-WEBAPP_DOMAIN = os.environ.get('WEBAPP_URL', f"https://{os.environ.get('REPLIT_DEV_DOMAIN', 'localhost:5000')}")
+def get_webapp_domain():
+    if os.environ.get('WEBAPP_URL'):
+        return os.environ['WEBAPP_URL']
+    if os.environ.get('KOYEB_PUBLIC_DOMAIN'):
+        return f"https://{os.environ['KOYEB_PUBLIC_DOMAIN']}"
+    if os.environ.get('REPLIT_DEV_DOMAIN'):
+        return f"https://{os.environ['REPLIT_DEV_DOMAIN']}"
+    return 'http://localhost:5000'
+
+WEBAPP_DOMAIN = get_webapp_domain()
 
 def get_admin_id():
     admin_id = os.environ.get('TELEGRAM_ADMIN_ID', '')
@@ -1013,9 +1022,22 @@ def run_bot():
     asyncio.set_event_loop(loop)
     loop.run_until_complete(bot_main())
 
+@app.route('/health')
+def health_check():
+    return jsonify({"status": "ok", "timestamp": datetime.now().isoformat()}), 200
+
 if __name__ == '__main__':
     init_db()
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
-    logger.info("Starting web server on port 5000...")
-    app.run(host='0.0.0.0', port=5000, debug=False)
+
+    try:
+        from keep_alive import start_keep_alive
+        if os.environ.get('KOYEB_PUBLIC_DOMAIN'):
+            start_keep_alive()
+    except Exception as e:
+        logger.warning(f"Keep-alive not started: {e}")
+
+    port = int(os.environ.get('PORT', 5000))
+    logger.info(f"Starting web server on port {port}...")
+    app.run(host='0.0.0.0', port=port, debug=False)
