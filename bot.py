@@ -65,10 +65,10 @@ async def topup_callback(callback: types.CallbackQuery):
         "📋 <b>PENTING:</b> Masukkan Telegram ID kamu di kolom pesan/message saat donasi.\n"
         f"Telegram ID kamu: <code>{user_id}</code>\n\n"
         "💰 <b>Daftar Harga:</b>\n"
-        "├ Rp 15.000+ → 1 Bulan VIP\n"
-        "├ Rp 50.000+ → 6 Bulan VIP\n"
-        "├ Rp 85.000+ → 1 Tahun VIP\n"
-        "└ Rp 150.000+ → Lifetime VIP\n\n"
+        "├ Rp 5.000+ → 3 Hari VIP\n"
+        "├ Rp 10.000+ → 2 Minggu VIP\n"
+        "├ Rp 35.000+ → 1 Bulan VIP\n"
+        "└ Rp 250.000+ → 1 Tahun VIP\n\n"
         "⚡ Langganan akan aktif otomatis setelah pembayaran dikonfirmasi."
     )
     await callback.message.answer(text, parse_mode=ParseMode.HTML)

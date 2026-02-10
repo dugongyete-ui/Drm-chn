@@ -41,10 +41,10 @@ static/
 - Webhook endpoint: `/webhook/saweria`
 - User puts their Telegram ID in the Saweria message field
 - Pricing tiers (IDR):
-  - Rp 15.000+ = 1 Month VIP
-  - Rp 50.000+ = 6 Months VIP
-  - Rp 85.000+ = 1 Year VIP
-  - Rp 150.000+ = Lifetime VIP
+  - Rp 5.000+ = 3 Hari VIP
+  - Rp 10.000+ = 2 Minggu VIP
+  - Rp 35.000+ = 1 Bulan VIP
+  - Rp 250.000+ = 1 Tahun VIP
 - Webhook verifies HMAC SHA256 signature using SAWERIA_STREAM_KEY
 - Auto-activates VIP and sends Telegram notification on successful payment
 

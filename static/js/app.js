@@ -666,15 +666,25 @@ async function loadProfile() {
         </div>
 
         <div class="pricing-grid">
-            <div class="pricing-card featured">
-                <div class="pricing-name">Lifetime</div>
-                <div class="pricing-price">$29.99</div>
-                <div class="pricing-period">one-time</div>
+            <div class="pricing-card">
+                <div class="pricing-name">3 Hari</div>
+                <div class="pricing-price">Rp 5K</div>
+                <div class="pricing-period">3 hari</div>
             </div>
             <div class="pricing-card">
-                <div class="pricing-name">1 Year</div>
-                <div class="pricing-price">$14.99</div>
-                <div class="pricing-period">/year</div>
+                <div class="pricing-name">2 Minggu</div>
+                <div class="pricing-price">Rp 10K</div>
+                <div class="pricing-period">14 hari</div>
+            </div>
+            <div class="pricing-card featured">
+                <div class="pricing-name">1 Bulan</div>
+                <div class="pricing-price">Rp 35K</div>
+                <div class="pricing-period">30 hari</div>
+            </div>
+            <div class="pricing-card">
+                <div class="pricing-name">1 Tahun</div>
+                <div class="pricing-price">Rp 250K</div>
+                <div class="pricing-period">365 hari</div>
             </div>
         </div>
 

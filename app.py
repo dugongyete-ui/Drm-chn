@@ -345,14 +345,14 @@ def update_settings(telegram_id):
         conn.close()
 
 def determine_plan(amount):
-    if amount >= 150000:
-        return "Lifetime VIP", None
-    elif amount >= 85000:
+    if amount >= 250000:
         return "1 Year VIP", timedelta(days=365)
-    elif amount >= 50000:
-        return "6 Months VIP", timedelta(days=180)
-    elif amount >= 15000:
+    elif amount >= 35000:
         return "1 Month VIP", timedelta(days=30)
+    elif amount >= 10000:
+        return "2 Weeks VIP", timedelta(days=14)
+    elif amount >= 5000:
+        return "3 Days VIP", timedelta(days=3)
     return None, None
 
 def send_telegram_notification(telegram_id, text):
@@ -522,10 +522,10 @@ def run_bot():
             "📋 <b>PENTING:</b> Masukkan Telegram ID kamu di kolom pesan/message saat donasi.\n"
             f"Telegram ID kamu: <code>{user_id}</code>\n\n"
             "💰 <b>Daftar Harga:</b>\n"
-            "├ Rp 15.000+ → 1 Bulan VIP\n"
-            "├ Rp 50.000+ → 6 Bulan VIP\n"
-            "├ Rp 85.000+ → 1 Tahun VIP\n"
-            "└ Rp 150.000+ → Lifetime VIP\n\n"
+            "├ Rp 5.000+ → 3 Hari VIP\n"
+            "├ Rp 10.000+ → 2 Minggu VIP\n"
+            "├ Rp 35.000+ → 1 Bulan VIP\n"
+            "└ Rp 250.000+ → 1 Tahun VIP\n\n"
             "⚡ Langganan akan aktif otomatis setelah pembayaran dikonfirmasi."
         )
         await callback.message.answer(text, parse_mode=ParseMode.HTML)
