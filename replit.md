@@ -15,11 +15,15 @@ TG-DramaChina is a Telegram Mini App for streaming Chinese and Asian dramas. It 
 ```
 .
 ├── app.py                  # Main Flask app + Telegram bot
+├── bot.py                  # Standalone bot (not used when app.py runs)
 ├── templates/
 │   └── index.html          # Single-page app HTML
 ├── static/
 │   ├── css/style.css       # All styles (Netflix dark theme)
-│   └── js/app.js           # Frontend logic
+│   ├── js/app.js           # Frontend logic
+│   └── images/
+│       ├── welcome_banner.png  # Bot /start welcome photo
+│       └── bot_profile.png     # Bot profile picture (for manual upload)
 └── replit.md               # This file
 ```
 
@@ -50,6 +54,11 @@ TG-DramaChina is a Telegram Mini App for streaming Chinese and Asian dramas. It 
 - `referral_logs` - Referral tracking log
 
 ## Recent Changes (Feb 2026)
+- **Bot /start with photo**: Bot now sends a welcome banner image when user hits /start, with description and inline keyboard
+- **Bot profile picture**: Generated profile picture available at static/images/bot_profile.png for manual upload to BotFather
+- **Monthly statistics dashboard**: Admin-only page showing total users, new users, active users, VIP users, watches, favorites, referrals, revenue, transactions, reports, and daily signup chart. API: GET /api/stats/monthly
+- **Saweria test endpoint**: Admin-only endpoint POST /api/stats/test-saweria to simulate Saweria webhook payments without real money
+- **Saweria webhook logging**: Added signature verification logging for debugging
 - **Netflix-style UI overhaul**: Dark background (#0a0a0a), red accent (#e50914), gold VIP accents, smooth animations, skeleton loaders
 - **Fixed API 405 errors**: /api/user and /api/referral now accept both GET and POST methods
 - **Enhanced referral system**: Processes referrals from URL params (?ref=ref_xxx) and Telegram start_param. Sends notification to referrer on every successful invite (not just every 3rd).

@@ -909,7 +909,101 @@ async function loadProfile() {
                 <span>Tentang</span>
                 <i class="fas fa-chevron-right chevron"></i>
             </div>
+            ${userIsAdmin ? `<div class="menu-item" onclick="showMonthlyStats()">
+                <i class="fas fa-chart-bar"></i>
+                <span>Statistik Bulanan</span>
+                <i class="fas fa-chevron-right chevron"></i>
+            </div>` : ''}
         </div>`;
+}
+
+async function showMonthlyStats() {
+    const container = document.getElementById('page-content');
+    container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Memuat statistik...</p></div>';
+
+    try {
+        const resp = await fetch(`${API_BASE}/stats/monthly`);
+        const stats = await resp.json();
+
+        container.innerHTML = `
+            <div class="page-header">
+                <button class="back-btn" onclick="showPage('profile')"><i class="fas fa-arrow-left"></i></button>
+                <h2>Statistik Bulanan</h2>
+            </div>
+            <div class="stats-month-title">
+                <i class="fas fa-calendar-alt"></i> ${stats.month}
+            </div>
+            <div class="stats-grid stats-grid-admin">
+                <div class="stat-card stat-card-highlight">
+                    <div class="stat-icon"><i class="fas fa-users"></i></div>
+                    <div class="stat-value">${stats.total_users}</div>
+                    <div class="stat-label">Total User</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-user-plus"></i></div>
+                    <div class="stat-value">${stats.new_users_this_month}</div>
+                    <div class="stat-label">User Baru</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-signal"></i></div>
+                    <div class="stat-value">${stats.active_users_this_month}</div>
+                    <div class="stat-label">User Aktif</div>
+                </div>
+                <div class="stat-card stat-card-vip">
+                    <div class="stat-icon"><i class="fas fa-crown"></i></div>
+                    <div class="stat-value">${stats.vip_users}</div>
+                    <div class="stat-label">User VIP</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-play-circle"></i></div>
+                    <div class="stat-value">${stats.total_watches_this_month}</div>
+                    <div class="stat-label">Tontonan</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-heart"></i></div>
+                    <div class="stat-value">${stats.total_favorites_this_month}</div>
+                    <div class="stat-label">Favorit</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-link"></i></div>
+                    <div class="stat-value">${stats.total_referrals_this_month}</div>
+                    <div class="stat-label">Referral</div>
+                </div>
+                <div class="stat-card stat-card-revenue">
+                    <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
+                    <div class="stat-value">Rp ${(stats.total_revenue_this_month || 0).toLocaleString('id-ID')}</div>
+                    <div class="stat-label">Pendapatan</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-receipt"></i></div>
+                    <div class="stat-value">${stats.total_transactions_this_month}</div>
+                    <div class="stat-label">Transaksi</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-flag"></i></div>
+                    <div class="stat-value">${stats.total_reports_this_month}</div>
+                    <div class="stat-label">Laporan</div>
+                </div>
+            </div>
+            ${stats.daily_signups && stats.daily_signups.length > 0 ? `
+            <div class="daily-signups-section">
+                <h3><i class="fas fa-chart-line"></i> Pendaftaran Harian</h3>
+                <div class="daily-signups-list">
+                    ${stats.daily_signups.map(d => `
+                        <div class="daily-signup-item">
+                            <span class="daily-date">${new Date(d.date).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}</span>
+                            <div class="daily-bar-container">
+                                <div class="daily-bar" style="width: ${Math.min(100, (d.count / Math.max(...stats.daily_signups.map(s => s.count))) * 100)}%"></div>
+                            </div>
+                            <span class="daily-count">${d.count}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>` : ''}
+        `;
+    } catch (e) {
+        container.innerHTML = '<div class="error-state"><i class="fas fa-exclamation-circle"></i><p>Gagal memuat statistik</p></div>';
+    }
 }
 
 function copyRefLink() {

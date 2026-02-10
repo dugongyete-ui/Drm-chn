@@ -1856,6 +1856,109 @@ textarea.form-input {
     animation: fadeIn 0.3s ease;
 }
 
+.stats-month-title {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent-gold);
+    margin-bottom: 16px;
+    padding: 10px;
+}
+.stats-month-title i { margin-right: 8px; }
+
+.stats-grid-admin {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+}
+
+.stats-grid-admin .stat-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 14px 10px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.stats-grid-admin .stat-icon {
+    font-size: 18px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.stats-grid-admin .stat-card-highlight {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, rgba(229,9,20,0.1), var(--bg-card));
+}
+.stats-grid-admin .stat-card-highlight .stat-icon { color: var(--accent); }
+
+.stats-grid-admin .stat-card-vip {
+    border-color: var(--accent-gold);
+    background: linear-gradient(135deg, rgba(245,197,24,0.1), var(--bg-card));
+}
+.stats-grid-admin .stat-card-vip .stat-icon { color: var(--accent-gold); }
+
+.stats-grid-admin .stat-card-revenue {
+    border-color: var(--success);
+    background: linear-gradient(135deg, rgba(70,211,105,0.1), var(--bg-card));
+    grid-column: span 2;
+}
+.stats-grid-admin .stat-card-revenue .stat-icon { color: var(--success); }
+.stats-grid-admin .stat-card-revenue .stat-value { color: var(--success); font-size: 20px; }
+
+.daily-signups-section {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.daily-signups-section h3 {
+    font-size: 15px;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+.daily-signups-section h3 i { color: var(--accent); margin-right: 8px; }
+
+.daily-signup-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.daily-date {
+    font-size: 12px;
+    color: var(--text-secondary);
+    min-width: 50px;
+}
+
+.daily-bar-container {
+    flex: 1;
+    height: 8px;
+    background: var(--bg-input);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.daily-bar {
+    height: 100%;
+    background: var(--accent-gradient);
+    border-radius: 4px;
+    min-width: 4px;
+    transition: width 0.3s ease;
+}
+
+.daily-count {
+    font-size: 12px;
+    color: var(--text-primary);
+    font-weight: 600;
+    min-width: 20px;
+    text-align: right;
+}
+
 @media (max-width: 360px) {
     .content-grid {
         grid-template-columns: repeat(2, 1fr);
