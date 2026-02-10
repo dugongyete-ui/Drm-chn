@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
+    "adafruit-circuitpython-mpl3115a2>=3.0.10",
     "aiogram>=3.24.0",
     "aiohttp>=3.13.3",
     "flask>=3.1.2",

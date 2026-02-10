@@ -42,4 +42,4 @@ run = ["python", "app.py"]
 [userenv]
 
 [userenv.shared]
-WEBAPP_URL = "https://566eccfd-936a-40b4-8cc5-f9cf5aed55f8-00-2azi0m54j9vmt.worf.replit.dev/"
+WEBAPP_URL = "https://7ccd30a6-dbec-401d-8fa2-cd9fa9a394da-00-1lz1e3l4b2ukt.spock.replit.dev/"

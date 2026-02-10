@@ -147,8 +147,27 @@ def proxy_api(endpoint):
         logger.error(f"API proxy error: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/user', methods=['POST'])
+@app.route('/api/user', methods=['GET', 'POST'])
 def upsert_user():
+    if request.method == 'GET':
+        telegram_id = request.args.get('telegram_id')
+        if not telegram_id:
+            return jsonify({"error": "telegram_id required"}), 400
+        conn = get_db()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
+            user = cur.fetchone()
+            if user:
+                user_dict = dict(user)
+                admin_id = get_admin_id()
+                user_dict['is_admin'] = (admin_id is not None and int(telegram_id) == admin_id)
+                return jsonify(user_dict)
+            return jsonify({"error": "User not found"}), 404
+        finally:
+            cur.close()
+            conn.close()
+
     data = request.json
     telegram_id = data.get('telegram_id')
     if not telegram_id:
@@ -359,11 +378,22 @@ def get_user_photo(telegram_id):
         cur.close()
         conn.close()
 
-@app.route('/api/referral', methods=['POST'])
+@app.route('/api/referral', methods=['GET', 'POST'])
 def handle_referral():
-    data = request.json
-    ref_code = data.get('ref_code')
-    telegram_id = data.get('telegram_id')
+    if request.method == 'GET':
+        ref_code = request.args.get('ref_code')
+        telegram_id = request.args.get('telegram_id')
+        if not ref_code or not telegram_id:
+            return jsonify({"error": "missing params"}), 400
+        try:
+            telegram_id = int(telegram_id)
+        except:
+            return jsonify({"error": "invalid telegram_id"}), 400
+    else:
+        data = request.json
+        ref_code = data.get('ref_code')
+        telegram_id = data.get('telegram_id')
+
     if not ref_code or not telegram_id:
         return jsonify({"error": "missing params"}), 400
 
@@ -372,7 +402,7 @@ def handle_referral():
     except:
         return jsonify({"error": "invalid ref code"}), 400
 
-    if referrer_id == telegram_id:
+    if referrer_id == int(telegram_id):
         return jsonify({"error": "cannot refer yourself"}), 400
 
     conn = get_db()
@@ -383,7 +413,7 @@ def handle_referral():
         if user and user['referred_by']:
             return jsonify({"status": "already_referred"})
 
-        cur.execute("SELECT telegram_id FROM users WHERE telegram_id = %s", (referrer_id,))
+        cur.execute("SELECT telegram_id, first_name FROM users WHERE telegram_id = %s", (referrer_id,))
         referrer = cur.fetchone()
         if not referrer:
             return jsonify({"error": "referrer not found"}), 404
@@ -407,30 +437,42 @@ def handle_referral():
         updated = cur.fetchone()
         new_count = updated['referral_count'] if updated else 0
 
+        cur.execute("SELECT first_name, username FROM users WHERE telegram_id = %s", (telegram_id,))
+        referred_user = cur.fetchone()
+        referred_name = ''
+        if referred_user:
+            referred_name = referred_user.get('first_name') or referred_user.get('username') or str(telegram_id)
+
+        bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+
+        if bot_token:
+            try:
+                import requests as req
+                msg = (
+                    "🎉 <b>Referral Berhasil!</b>\n\n"
+                    f"👤 <b>{referred_name}</b> bergabung melalui link referralmu!\n"
+                    f"🏆 Total referral: <b>{new_count}</b>\n"
+                    f"💰 +100 poin (Total: +{new_count * 100} poin)\n"
+                )
+                if new_count % 3 == 0:
+                    msg += "\n🔓 <b>Akses penuh 24 jam telah diaktifkan!</b>"
+                else:
+                    remaining = 3 - (new_count % 3)
+                    msg += f"\n📊 {remaining} referral lagi untuk akses 24 jam gratis!"
+
+                req.post(
+                    f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                    json={"chat_id": referrer_id, "text": msg, "parse_mode": "HTML"}
+                )
+            except Exception as e:
+                logger.error(f"Failed to send referral notification: {e}")
+
         if new_count > 0 and new_count % 3 == 0:
             expires = datetime.now() + timedelta(hours=24)
             cur.execute("""
                 UPDATE users SET referral_access_expires_at = %s
                 WHERE telegram_id = %s
             """, (expires, referrer_id))
-
-            bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
-            if bot_token:
-                try:
-                    import requests as req
-                    msg = (
-                        "🎉 <b>Selamat!</b>\n\n"
-                        f"Kamu berhasil mengundang {new_count} teman!\n"
-                        "🔓 Akses penuh 24 jam telah diaktifkan.\n"
-                        f"⏰ Berlaku hingga: {expires.strftime('%d %B %Y %H:%M')}\n\n"
-                        "Terus undang teman untuk mendapatkan akses gratis!"
-                    )
-                    req.post(
-                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                        json={"chat_id": referrer_id, "text": msg, "parse_mode": "HTML"}
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to send referral notification: {e}")
 
         conn.commit()
         return jsonify({"status": "ok", "referral_count": new_count})
