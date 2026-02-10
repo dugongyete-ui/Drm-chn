@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DramaBox</title>
+    <title>TG-DramaChina</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="/static/css/style.css?v={{ cache_bust }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,19 +13,19 @@
     <div id="app">
         <div id="page-home" class="page active">
             <div class="header">
-                <h1 class="logo">DramaBox</h1>
-                <button class="btn-icon" onclick="showRandomDrama()"><i class="fas fa-dice"></i></button>
+                <h1 class="logo">TG-DramaChina</h1>
+                <button class="btn-icon" onclick="showRandomDrama()" title="Drama Acak"><i class="fas fa-dice"></i></button>
             </div>
             <div class="search-container" onclick="showPage('search')">
                 <div class="search-bar-fake">
                     <i class="fas fa-search"></i>
-                    <span>Search dramas...</span>
+                    <span>Cari drama...</span>
                 </div>
             </div>
             <div class="tabs-container">
                 <div class="tabs" id="home-tabs">
-                    <button class="tab active" data-tab="foryou" onclick="switchHomeTab(this, 'foryou')">For You</button>
-                    <button class="tab" data-tab="latest" onclick="switchHomeTab(this, 'latest')">Latest</button>
+                    <button class="tab active" data-tab="foryou" onclick="switchHomeTab(this, 'foryou')">Untukmu</button>
+                    <button class="tab" data-tab="latest" onclick="switchHomeTab(this, 'latest')">Terbaru</button>
                     <button class="tab" data-tab="trending" onclick="switchHomeTab(this, 'trending')">Trending</button>
                     <button class="tab" data-tab="dubindo" onclick="switchHomeTab(this, 'dubindo')">Dub Indo</button>
                 </div>
@@ -40,7 +40,7 @@
                 <button class="btn-icon" onclick="showPage('home')"><i class="fas fa-arrow-left"></i></button>
                 <div class="search-bar-real">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="search-input" placeholder="Search dramas..." oninput="handleSearch(this.value)">
+                    <input type="text" id="search-input" placeholder="Cari drama..." oninput="handleSearch(this.value)">
                     <button class="btn-clear" onclick="clearSearch()"><i class="fas fa-times"></i></button>
                 </div>
             </div>
@@ -70,7 +70,7 @@
 
         <div id="page-library" class="page">
             <div class="header">
-                <h2 class="header-title">Library</h2>
+                <h2 class="header-title">Perpustakaan</h2>
             </div>
             <div class="tabs-container">
                 <div class="tabs">
@@ -83,7 +83,7 @@
 
         <div id="page-profile" class="page">
             <div class="header">
-                <h2 class="header-title">Profile</h2>
+                <h2 class="header-title">Profil</h2>
             </div>
             <div id="profile-content" class="profile-content"></div>
         </div>
@@ -91,14 +91,14 @@
         <div id="page-help" class="page">
             <div class="header">
                 <button class="btn-icon" onclick="showPage('profile')"><i class="fas fa-arrow-left"></i></button>
-                <h2 class="header-title">Help Center</h2>
+                <h2 class="header-title">Pusat Bantuan</h2>
             </div>
             <div class="help-content">
-                <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;padding:12px;background:rgba(124,77,255,0.1);border-radius:8px"><i class="fas fa-info-circle" style="color:var(--primary);margin-right:6px"></i>Laporan akan dikirim langsung ke admin/pemilik bot via Telegram.</p>
+                <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;padding:12px;background:rgba(124,77,255,0.1);border-radius:8px"><i class="fas fa-info-circle" style="color:var(--primary);margin-right:6px"></i>Laporan akan dikirim langsung ke admin via Telegram.</p>
                 <div class="form-group">
-                    <label>Issue Type</label>
+                    <label>Jenis Masalah</label>
                     <select id="issue-type" class="form-input">
-                        <option value="">Select issue type</option>
+                        <option value="">Pilih jenis masalah</option>
                         <option value="Video tidak bisa diputar">Video tidak bisa diputar</option>
                         <option value="Subtitle error">Subtitle error</option>
                         <option value="Episode hilang">Episode hilang</option>
@@ -107,11 +107,11 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Description</label>
+                    <label>Deskripsi</label>
                     <textarea id="issue-desc" class="form-input" rows="5" placeholder="Jelaskan masalah yang kamu alami..."></textarea>
                 </div>
                 <button class="btn-primary btn-full" onclick="submitReport()">
-                    <i class="fas fa-paper-plane"></i> Send Report
+                    <i class="fas fa-paper-plane"></i> Kirim Laporan
                 </button>
             </div>
         </div>
@@ -119,7 +119,7 @@
         <div id="page-settings" class="page">
             <div class="header">
                 <button class="btn-icon" onclick="showPage('profile')"><i class="fas fa-arrow-left"></i></button>
-                <h2 class="header-title">Settings</h2>
+                <h2 class="header-title">Pengaturan</h2>
             </div>
             <div class="settings-content" id="settings-content">
                 <div class="loading-spinner"><div class="spinner"></div></div>
@@ -129,17 +129,17 @@
         <div id="page-about" class="page">
             <div class="header">
                 <button class="btn-icon" onclick="showPage('profile')"><i class="fas fa-arrow-left"></i></button>
-                <h2 class="header-title">About</h2>
+                <h2 class="header-title">Tentang</h2>
             </div>
             <div class="about-content">
                 <div class="about-logo">
                     <div class="about-icon"><i class="fas fa-play-circle"></i></div>
-                    <h2>DramaBox</h2>
-                    <p class="about-version">Version 2.0.0</p>
+                    <h2>TG-DramaChina</h2>
+                    <p class="about-version">Versi 2.1.0</p>
                 </div>
                 <div class="about-section">
                     <h3>Tentang Aplikasi</h3>
-                    <p>DramaBox adalah platform streaming drama China, Korea & Asia lainnya langsung dari Telegram. Nikmati ribuan episode drama favorit kamu dengan kualitas terbaik.</p>
+                    <p>TG-DramaChina adalah platform streaming drama China & Asia lainnya langsung dari Telegram. Nikmati ribuan episode drama favorit kamu dengan kualitas terbaik.</p>
                 </div>
                 <div class="about-section">
                     <h3>Fitur Utama</h3>
@@ -149,15 +149,15 @@
                         <div class="feature-item"><i class="fas fa-heart"></i><span>Simpan favorit</span></div>
                         <div class="feature-item"><i class="fas fa-history"></i><span>Riwayat tontonan</span></div>
                         <div class="feature-item"><i class="fas fa-crown"></i><span>VIP membership</span></div>
-                        <div class="feature-item"><i class="fas fa-share-alt"></i><span>Sistem referral</span></div>
+                        <div class="feature-item"><i class="fas fa-gift"></i><span>Referral - undang 3 teman = akses 24 jam</span></div>
                     </div>
                 </div>
                 <div class="about-section">
                     <h3>Kontak</h3>
-                    <p>Jika ada pertanyaan atau masalah, silakan hubungi kami melalui Help Center atau Official Group.</p>
+                    <p>Jika ada pertanyaan atau masalah, silakan hubungi kami melalui Pusat Bantuan.</p>
                 </div>
                 <div class="about-footer">
-                    <p>&copy; 2026 DramaBox. All rights reserved.</p>
+                    <p>&copy; 2026 TG-DramaChina. All rights reserved.</p>
                 </div>
             </div>
         </div>
@@ -229,15 +229,15 @@
         <nav class="bottom-nav" id="bottom-nav">
             <button class="nav-item active" onclick="showPage('home')">
                 <i class="fas fa-home"></i>
-                <span>Home</span>
+                <span>Beranda</span>
             </button>
             <button class="nav-item" onclick="showPage('library')">
                 <i class="fas fa-book"></i>
-                <span>Library</span>
+                <span>Perpustakaan</span>
             </button>
             <button class="nav-item" onclick="showPage('profile')">
                 <i class="fas fa-user"></i>
-                <span>Profile</span>
+                <span>Profil</span>
             </button>
         </nav>
     </div>

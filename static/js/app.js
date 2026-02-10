@@ -14,6 +14,8 @@ let searchPage = 1;
 let searchLoading = false;
 let searchHasMore = true;
 let lastSearchQuery = '';
+let userIsAdmin = false;
+let userHasFullAccess = false;
 
 const tg = window.Telegram?.WebApp;
 
@@ -60,11 +62,14 @@ async function registerUser() {
         const data = await resp.json();
         if (data.telegram_id) {
             currentUser = { ...currentUser, ...data };
+            userIsAdmin = data.is_admin || false;
         }
+
+        await checkUserAccess();
 
         const startParam = tg?.initDataUnsafe?.start_param;
         if (startParam && startParam.startsWith('ref_')) {
-            await fetch('/api/referral', {
+            const refResp = await fetch('/api/referral', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -72,13 +77,45 @@ async function registerUser() {
                     ref_code: startParam
                 })
             });
+            const refData = await refResp.json();
+            if (refData.status === 'ok') {
+                showToast('Referral berhasil diterapkan!');
+            }
         }
     } catch (e) {
         console.error('Register error:', e);
     }
 }
 
+async function checkUserAccess() {
+    if (!currentUser.telegram_id) return;
+    try {
+        const resp = await fetch(`/api/subscription/check/${currentUser.telegram_id}`);
+        const data = await resp.json();
+        userHasFullAccess = userIsAdmin || data.is_active || false;
+        currentUser.membership = data.membership || 'Free';
+        currentUser.has_referral_access = data.has_referral_access || false;
+    } catch (e) {
+        console.error('Access check error:', e);
+    }
+}
+
+function stopVideoPlayer() {
+    const player = document.getElementById('video-player');
+    if (player) {
+        player.pause();
+        player.removeAttribute('src');
+        player.load();
+    }
+}
+
 function showPage(pageId) {
+    const currentPage = document.querySelector('.page.active')?.id?.replace('page-', '') || 'home';
+
+    if (currentPage === 'player' && pageId !== 'player') {
+        stopVideoPlayer();
+    }
+
     const navPages = ['home', 'library', 'profile'];
     if (navPages.includes(pageId)) {
         previousPage = 'home';
@@ -146,7 +183,7 @@ async function loadHomeContent(tab, append) {
             data = JSON.parse(text);
         } catch (pe) {
             console.error('JSON parse error:', pe, text.substring(0, 200));
-            if (!append) container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to parse data</p></div>';
+            if (!append) container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Gagal memuat data</p></div>';
             homeLoading = false;
             return;
         }
@@ -157,7 +194,7 @@ async function loadHomeContent(tab, append) {
             homeHasMore = false;
             removeLoadingIndicator(container);
             if (!append) {
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-film"></i><p>No dramas found</p></div>';
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-film"></i><p>Tidak ada drama ditemukan</p></div>';
             }
             homeLoading = false;
             return;
@@ -188,7 +225,7 @@ async function loadHomeContent(tab, append) {
     } catch (e) {
         console.error('Load error:', e);
         removeLoadingIndicator(container);
-        if (!append) container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load: ' + e.message + '</p></div>';
+        if (!append) container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Gagal memuat: ' + e.message + '</p></div>';
     }
     homeLoading = false;
 }
@@ -211,7 +248,7 @@ function appendLoadMoreButton(container, type) {
     btn.setAttribute('data-loadmore', type);
     btn.innerHTML = '<button class="btn-load-more" onclick="' +
         (type === 'home' ? 'loadHomeContent(currentTab, true)' : 'loadMoreSearch()') +
-        '"><i class="fas fa-arrow-down"></i> Load More</button>';
+        '"><i class="fas fa-arrow-down"></i> Muat Lagi</button>';
     container.appendChild(btn);
 }
 
@@ -234,7 +271,7 @@ function removeLoadingIndicator(container) {
 
 function renderDramaCard(item, index) {
     const id = item.bookId || item.id || item.book_id || '';
-    const title = item.bookName || item.name || item.title || 'Unknown';
+    const title = item.bookName || item.name || item.title || 'Tidak diketahui';
     const cover = item.coverWap || item.cover || item.coverUrl || item.image || '';
 
     return `<div class="drama-card" style="animation-delay:${index * 0.05}s" onclick="openDrama('${id}', '${encodeURIComponent(title)}', '${encodeURIComponent(cover)}')">
@@ -268,7 +305,7 @@ async function loadSearchSuggestions() {
 
         if (keywords.length > 0) {
             container.innerHTML = `
-                <div class="suggestion-title">Popular Searches</div>
+                <div class="suggestion-title">Pencarian Populer</div>
                 <div class="suggestion-tags">
                     ${keywords.map(k => {
                         const word = typeof k === 'string' ? k : (k.keyword || k.name || k.word || '');
@@ -323,7 +360,7 @@ async function doSearch(query, append) {
             searchHasMore = false;
             removeLoadingIndicator(container);
             if (!append) {
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>No results found</p></div>';
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>Tidak ada hasil ditemukan</p></div>';
             }
             searchLoading = false;
             return;
@@ -351,7 +388,7 @@ async function doSearch(query, append) {
         }
     } catch (e) {
         removeLoadingIndicator(container);
-        if (!append) container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Search failed</p></div>';
+        if (!append) container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Pencarian gagal</p></div>';
     }
     searchLoading = false;
 }
@@ -382,23 +419,39 @@ async function openDrama(bookId, encodedTitle, encodedCover) {
         const detailData = await detailResp.json();
         const episodesData = await episodesResp.json();
 
-        const detail = detailData.data || detailData.result || detailData;
+        let detail = detailData;
+        if (detailData.data) {
+            detail = typeof detailData.data === 'object' && !Array.isArray(detailData.data) ? detailData.data : detailData;
+        } else if (detailData.result) {
+            detail = typeof detailData.result === 'object' && !Array.isArray(detailData.result) ? detailData.result : detailData;
+        }
+
+        const rawSynopsis = detail.description || detail.synopsis || detail.intro || detail.brief || detail.content || detail.bookInfo || '';
+        const synopsis = rawSynopsis || 'Deskripsi tidak tersedia.';
+
         currentDrama = {
             bookId: bookId,
-            title: detail.bookName || detail.name || decodeURIComponent(encodedTitle),
-            cover: detail.coverWap || detail.cover || decodeURIComponent(encodedCover),
-            synopsis: detail.description || detail.synopsis || detail.intro || 'No description available.',
-            tags: detail.tags || detail.tagList || []
+            title: detail.bookName || detail.name || detail.title || decodeURIComponent(encodedTitle),
+            cover: detail.coverWap || detail.cover || detail.coverUrl || decodeURIComponent(encodedCover),
+            synopsis: synopsis,
+            tags: detail.tags || detail.tagList || detail.categoryList || []
         };
 
         let episodes = [];
         if (episodesData.data) {
-            episodes = Array.isArray(episodesData.data) ? episodesData.data :
-                (episodesData.data.episodeList || episodesData.data.list || episodesData.data.episodes || []);
+            if (Array.isArray(episodesData.data)) {
+                episodes = episodesData.data;
+            } else {
+                episodes = episodesData.data.episodeList || episodesData.data.list || episodesData.data.episodes || episodesData.data.chapterList || [];
+            }
         } else if (Array.isArray(episodesData)) {
             episodes = episodesData;
         } else if (episodesData.result) {
-            episodes = Array.isArray(episodesData.result) ? episodesData.result : [];
+            if (Array.isArray(episodesData.result)) {
+                episodes = episodesData.result;
+            } else {
+                episodes = episodesData.result.episodeList || episodesData.result.list || episodesData.result.episodes || [];
+            }
         }
         currentEpisodes = episodes;
 
@@ -413,9 +466,12 @@ async function openDrama(bookId, encodedTitle, encodedCover) {
             const tagArr = Array.isArray(currentDrama.tags) ? currentDrama.tags :
                 (typeof currentDrama.tags === 'string' ? currentDrama.tags.split(',') : []);
             tagsHtml = '<div class="detail-tags">' +
-                tagArr.map(t => `<span class="detail-tag">${typeof t === 'object' ? (t.name || t.tagName || '') : t}</span>`).join('') +
+                tagArr.map(t => `<span class="detail-tag">${typeof t === 'object' ? (t.name || t.tagName || t.categoryName || '') : t}</span>`).join('') +
                 '</div>';
         }
+
+        const canPlayAll = userIsAdmin || userHasFullAccess;
+        const freeLimit = 10;
 
         container.innerHTML = `
             <img class="detail-cover" src="${currentDrama.cover}" alt="${currentDrama.title}" onerror="this.style.display='none'">
@@ -423,20 +479,24 @@ async function openDrama(bookId, encodedTitle, encodedCover) {
                 <h2 class="detail-title">${currentDrama.title}</h2>
                 ${tagsHtml}
                 <p class="detail-synopsis collapsed" id="synopsis-text">${currentDrama.synopsis}</p>
-                <button class="btn-expand" onclick="toggleSynopsis()">Read more</button>
+                <button class="btn-expand" onclick="toggleSynopsis()">Selengkapnya</button>
             </div>
             <div class="episodes-section">
-                <h3 class="section-title">Episodes (${episodes.length})</h3>
+                <h3 class="section-title">Episode (${episodes.length})</h3>
+                ${!canPlayAll && episodes.length > freeLimit ? '<p class="episode-lock-info"><i class="fas fa-lock"></i> Episode 11+ memerlukan VIP atau 3 referral</p>' : ''}
                 <div class="episode-grid">
                     ${episodes.map((ep, i) => {
                         const epNum = getEpNum(ep, i);
-                        return `<button class="episode-btn" onclick="playEpisode(${i})">${epNum}</button>`;
+                        const isLocked = !canPlayAll && i >= freeLimit;
+                        return `<button class="episode-btn ${isLocked ? 'locked' : ''}" onclick="playEpisode(${i})">
+                            ${isLocked ? '<i class="fas fa-lock lock-icon"></i>' : ''}${epNum}
+                        </button>`;
                     }).join('')}
                 </div>
             </div>`;
     } catch (e) {
         console.error('Detail error:', e);
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load details</p></div>';
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Gagal memuat detail</p></div>';
     }
 }
 
@@ -445,10 +505,10 @@ function toggleSynopsis() {
     const btn = el.nextElementSibling;
     if (el.classList.contains('collapsed')) {
         el.classList.remove('collapsed');
-        btn.textContent = 'Show less';
+        btn.textContent = 'Tampilkan lebih sedikit';
     } else {
         el.classList.add('collapsed');
-        btn.textContent = 'Read more';
+        btn.textContent = 'Selengkapnya';
     }
 }
 
@@ -477,11 +537,17 @@ async function playEpisode(index) {
     const ep = currentEpisodes[index];
     if (!ep) return;
 
+    const freeLimit = 10;
+    if (!userIsAdmin && !userHasFullAccess && index >= freeLimit) {
+        showLockedModal();
+        return;
+    }
+
     const videoUrl = extractVideoUrl(ep);
     const epNum = getEpNum(ep, index);
 
     if (!videoUrl) {
-        showToast('Video URL not available');
+        showToast('URL video tidak tersedia');
         return;
     }
 
@@ -492,13 +558,17 @@ async function playEpisode(index) {
     player.src = videoUrl;
     player.play().catch(() => {});
 
+    const canPlayAll = userIsAdmin || userHasFullAccess;
     const epList = document.getElementById('episode-list');
     epList.innerHTML = `
-        <h3 class="section-title">All Episodes</h3>
+        <h3 class="section-title">Semua Episode</h3>
         <div class="episode-grid">
             ${currentEpisodes.map((e, i) => {
                 const n = getEpNum(e, i);
-                return `<button class="episode-btn ${i === index ? 'active' : ''}" onclick="playEpisode(${i})">${n}</button>`;
+                const isLocked = !canPlayAll && i >= freeLimit;
+                return `<button class="episode-btn ${i === index ? 'active' : ''} ${isLocked ? 'locked' : ''}" onclick="playEpisode(${i})">
+                    ${isLocked ? '<i class="fas fa-lock lock-icon"></i>' : ''}${n}
+                </button>`;
             }).join('')}
         </div>`;
 
@@ -517,6 +587,29 @@ async function playEpisode(index) {
     }
 }
 
+function showLockedModal() {
+    const modal = document.createElement('div');
+    modal.className = 'random-modal';
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    modal.innerHTML = `
+        <div class="random-modal-content">
+            <div class="random-modal-body" style="text-align:center;padding:24px;">
+                <div style="font-size:48px;margin-bottom:16px;">🔒</div>
+                <h3 style="margin-bottom:8px;">Episode Terkunci</h3>
+                <p style="margin-bottom:16px;">Episode ini memerlukan akses premium. Kamu bisa:</p>
+                <div style="text-align:left;margin-bottom:16px;">
+                    <p style="margin-bottom:8px;font-size:13px;">👑 <b>Upgrade VIP</b> - Akses semua episode</p>
+                    <p style="font-size:13px;">🎁 <b>Undang 3 Teman</b> - Dapatkan akses 24 jam gratis</p>
+                </div>
+                <div class="random-modal-actions">
+                    <button class="btn-secondary" onclick="this.closest('.random-modal').remove()">Tutup</button>
+                    <button class="btn-primary" onclick="this.closest('.random-modal').remove();showPage('upgrade')">Upgrade VIP</button>
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+}
+
 async function checkFavorite(bookId) {
     if (!currentUser.telegram_id) return false;
     try {
@@ -531,7 +624,7 @@ async function checkFavorite(bookId) {
 
 async function toggleFavorite() {
     if (!currentDrama || !currentUser.telegram_id) {
-        showToast('Please login via Telegram');
+        showToast('Silakan login via Telegram');
         return;
     }
 
@@ -550,7 +643,7 @@ async function toggleFavorite() {
             });
             favorites = favorites.filter(f => f.book_id !== currentDrama.bookId);
             favBtn.innerHTML = '<i class="far fa-heart"></i>';
-            showToast('Removed from favorites');
+            showToast('Dihapus dari favorit');
         } else {
             await fetch('/api/favorites', {
                 method: 'POST',
@@ -564,10 +657,10 @@ async function toggleFavorite() {
             });
             favorites.push({ book_id: currentDrama.bookId });
             favBtn.innerHTML = '<i class="fas fa-heart" style="color:#ef4444"></i>';
-            showToast('Added to favorites');
+            showToast('Ditambahkan ke favorit');
         }
     } catch (e) {
-        showToast('Failed to update favorites');
+        showToast('Gagal memperbarui favorit');
     }
 }
 
@@ -576,7 +669,7 @@ async function loadLibraryContent() {
     container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
 
     if (!currentUser.telegram_id) {
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-user-lock"></i><p>Login via Telegram to see your library</p></div>';
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-user-lock"></i><p>Login via Telegram untuk melihat library</p></div>';
         return;
     }
 
@@ -587,7 +680,7 @@ async function loadLibraryContent() {
 
         if (!data || data.length === 0) {
             const icon = currentLibTab === 'history' ? 'fa-clock' : 'fa-heart';
-            const text = currentLibTab === 'history' ? 'No watch history yet' : 'No favorites yet';
+            const text = currentLibTab === 'history' ? 'Belum ada riwayat tontonan' : 'Belum ada favorit';
             container.innerHTML = `<div class="empty-state"><i class="fas ${icon}"></i><p>${text}</p></div>`;
             return;
         }
@@ -595,7 +688,7 @@ async function loadLibraryContent() {
         container.innerHTML = '<div class="content-grid" style="padding:0;">' +
             data.map((item, i) => {
                 const id = item.book_id;
-                const title = item.title || 'Unknown';
+                const title = item.title || 'Tidak diketahui';
                 const cover = item.cover_url || '';
                 return `<div class="drama-card" style="animation-delay:${i * 0.05}s" onclick="openDrama('${id}', '${encodeURIComponent(title)}', '${encodeURIComponent(cover)}')">
                     <img src="${cover}" alt="${title}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 400%22><rect fill=%22%231a2332%22 width=%22300%22 height=%22400%22/><text fill=%22%2364748b%22 x=%22150%22 y=%22200%22 text-anchor=%22middle%22 font-size=%2214%22>No Image</text></svg>'">
@@ -604,7 +697,7 @@ async function loadLibraryContent() {
             }).join('') +
             '</div>';
     } catch (e) {
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load library</p></div>';
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Gagal memuat library</p></div>';
     }
 }
 
@@ -623,7 +716,18 @@ async function loadProfile() {
         try {
             const resp = await fetch(`/api/user/${currentUser.telegram_id}`);
             const data = await resp.json();
-            if (data.telegram_id) userData = { ...currentUser, ...data };
+            if (data.telegram_id) {
+                userData = { ...currentUser, ...data };
+                userIsAdmin = data.is_admin || false;
+            }
+        } catch {}
+    }
+
+    let referralData = { referral_count: 0, referrals_until_next_reward: 3, has_referral_access: false };
+    if (currentUser.telegram_id) {
+        try {
+            const refResp = await fetch(`/api/referral/status/${currentUser.telegram_id}`);
+            referralData = await refResp.json();
         } catch {}
     }
 
@@ -642,6 +746,19 @@ async function loadProfile() {
             + `<div class="profile-avatar" style="display:none">${initial}</div>`
         : `<div class="profile-avatar">${initial}</div>`;
 
+    const membershipLabel = userIsAdmin ? 'Admin' : (userData.membership || 'Free');
+    const progressPercent = Math.min(100, ((referralData.referral_count % 3) / 3) * 100);
+    const referralsNeeded = referralData.referrals_until_next_reward || 3;
+
+    let referralAccessHtml = '';
+    if (referralData.has_referral_access && referralData.referral_access_expires_at) {
+        const expDate = new Date(referralData.referral_access_expires_at);
+        referralAccessHtml = `
+            <div class="referral-access-badge">
+                <i class="fas fa-unlock"></i> Akses Penuh Aktif hingga ${expDate.toLocaleString('id-ID')}
+            </div>`;
+    }
+
     container.innerHTML = `
         <div class="profile-header">
             <div class="profile-avatar-wrapper">
@@ -657,74 +774,62 @@ async function loadProfile() {
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-value">${userData.points || 0}</div>
-                <div class="stat-label">Points</div>
+                <div class="stat-label">Poin</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value">${userData.commission || 0}</div>
-                <div class="stat-label">Commission</div>
+                <div class="stat-label">Komisi</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value">${userData.referral_count || 0}</div>
-                <div class="stat-label">Referrals</div>
+                <div class="stat-label">Referral</div>
             </div>
         </div>
 
         <div class="membership-card">
             <div class="membership-status">
-                <span>Membership</span>
-                <span class="membership-badge ${userData.membership === 'VIP' ? 'vip' : ''}">${userData.membership || 'Free'} Member</span>
+                <span>Keanggotaan</span>
+                <span class="membership-badge ${membershipLabel === 'VIP' || membershipLabel === 'Admin' ? 'vip' : ''}">${membershipLabel}</span>
             </div>
-            <button class="btn-primary btn-full" onclick="showPage('upgrade')">
-                <i class="fas fa-crown"></i> Upgrade to VIP
-            </button>
-        </div>
-
-        <div class="pricing-grid">
-            <div class="pricing-card">
-                <div class="pricing-name">3 Hari</div>
-                <div class="pricing-price">Rp 5K</div>
-                <div class="pricing-period">3 hari</div>
-            </div>
-            <div class="pricing-card">
-                <div class="pricing-name">2 Minggu</div>
-                <div class="pricing-price">Rp 10K</div>
-                <div class="pricing-period">14 hari</div>
-            </div>
-            <div class="pricing-card featured">
-                <div class="pricing-name">1 Bulan</div>
-                <div class="pricing-price">Rp 35K</div>
-                <div class="pricing-period">30 hari</div>
-            </div>
-            <div class="pricing-card">
-                <div class="pricing-name">1 Tahun</div>
-                <div class="pricing-price">Rp 250K</div>
-                <div class="pricing-period">365 hari</div>
-            </div>
+            ${membershipLabel !== 'Admin' ? `<button class="btn-primary btn-full" onclick="showPage('upgrade')">
+                <i class="fas fa-crown"></i> Upgrade ke VIP
+            </button>` : ''}
         </div>
 
         <div class="referral-section">
-            <h3 class="section-title">Referral Link</h3>
-            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:8px">Share & earn 100 points per referral!</p>
+            <h3 class="section-title"><i class="fas fa-gift" style="color:var(--accent);margin-right:8px;"></i>Sistem Referral</h3>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Undang 3 teman = Akses penuh 24 jam GRATIS!</p>
+            ${referralAccessHtml}
+            <div class="referral-progress">
+                <div class="referral-progress-info">
+                    <span>${referralData.referral_count % 3}/3 referral</span>
+                    <span>${referralsNeeded} lagi untuk hadiah</span>
+                </div>
+                <div class="referral-progress-bar">
+                    <div class="referral-progress-fill" style="width:${progressPercent}%"></div>
+                </div>
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);margin:8px 0;">Bagikan link di bawah ke teman:</p>
             <div class="referral-link">
                 <code id="ref-link">${refLink}</code>
-                <button class="btn-copy" onclick="copyRefLink()">Copy</button>
+                <button class="btn-copy" onclick="copyRefLink()">Salin</button>
             </div>
         </div>
 
         <div class="menu-list">
             <div class="menu-item" onclick="showPage('help')">
                 <i class="fas fa-headset"></i>
-                <span>Help Center</span>
+                <span>Pusat Bantuan</span>
                 <i class="fas fa-chevron-right chevron"></i>
             </div>
             <div class="menu-item" onclick="showPage('settings')">
                 <i class="fas fa-cog"></i>
-                <span>Settings</span>
+                <span>Pengaturan</span>
                 <i class="fas fa-chevron-right chevron"></i>
             </div>
             <div class="menu-item" onclick="showPage('about')">
                 <i class="fas fa-info-circle"></i>
-                <span>About</span>
+                <span>Tentang</span>
                 <i class="fas fa-chevron-right chevron"></i>
             </div>
         </div>`;
@@ -733,7 +838,7 @@ async function loadProfile() {
 function copyRefLink() {
     const link = document.getElementById('ref-link').textContent;
     navigator.clipboard.writeText(link).then(() => {
-        showToast('Link copied!');
+        showToast('Link disalin!');
     }).catch(() => {
         const textarea = document.createElement('textarea');
         textarea.value = link;
@@ -741,7 +846,7 @@ function copyRefLink() {
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        showToast('Link copied!');
+        showToast('Link disalin!');
     });
 }
 
@@ -749,8 +854,8 @@ async function submitReport() {
     const type = document.getElementById('issue-type').value;
     const desc = document.getElementById('issue-desc').value;
 
-    if (!type) { showToast('Please select issue type'); return; }
-    if (!desc) { showToast('Please describe the issue'); return; }
+    if (!type) { showToast('Pilih jenis masalah'); return; }
+    if (!desc) { showToast('Jelaskan masalahnya'); return; }
 
     try {
         await fetch('/api/report', {
@@ -762,27 +867,36 @@ async function submitReport() {
                 description: desc
             })
         });
-        showToast('Report sent successfully!');
+        showToast('Laporan berhasil dikirim!');
         document.getElementById('issue-type').value = '';
         document.getElementById('issue-desc').value = '';
         setTimeout(() => showPage('profile'), 1000);
     } catch {
-        showToast('Failed to send report');
+        showToast('Gagal mengirim laporan');
     }
 }
 
 async function showRandomDrama() {
     try {
-        const resp = await fetch(`${API_BASE}/randomdrama`);
+        const resp = await fetch(`${API_BASE}/foryou?page=${Math.floor(Math.random() * 5) + 1}`);
         const data = await resp.json();
-        const drama = data.data || data.result || data;
+        let items = extractItems(data);
 
-        if (!drama) { showToast('Failed to get random drama'); return; }
+        if (!items || items.length === 0) {
+            showToast('Gagal mendapatkan drama acak');
+            return;
+        }
 
+        const drama = items[Math.floor(Math.random() * items.length)];
         const id = drama.bookId || drama.id || '';
-        const title = drama.bookName || drama.name || drama.title || 'Unknown';
-        const cover = drama.coverWap || drama.cover || '';
-        const synopsis = drama.description || drama.synopsis || drama.intro || '';
+        const title = drama.bookName || drama.name || drama.title || 'Tidak diketahui';
+        const cover = drama.coverWap || drama.cover || drama.coverUrl || '';
+        const synopsis = drama.description || drama.synopsis || drama.intro || drama.brief || '';
+
+        if (!id) {
+            showToast('Gagal mendapatkan drama acak');
+            return;
+        }
 
         const modal = document.createElement('div');
         modal.className = 'random-modal';
@@ -792,16 +906,16 @@ async function showRandomDrama() {
                 <img src="${cover}" alt="${title}" onerror="this.style.display='none'">
                 <div class="random-modal-body">
                     <h3>${title}</h3>
-                    <p>${synopsis}</p>
+                    <p>${synopsis || 'Drama China pilihan acak untukmu!'}</p>
                     <div class="random-modal-actions">
-                        <button class="btn-secondary" onclick="this.closest('.random-modal').remove()">Close</button>
-                        <button class="btn-primary" onclick="this.closest('.random-modal').remove();openDrama('${id}','${encodeURIComponent(title)}','${encodeURIComponent(cover)}')">Watch</button>
+                        <button class="btn-secondary" onclick="this.closest('.random-modal').remove()">Tutup</button>
+                        <button class="btn-primary" onclick="this.closest('.random-modal').remove();openDrama('${id}','${encodeURIComponent(title)}','${encodeURIComponent(cover)}')">Tonton</button>
                     </div>
                 </div>
             </div>`;
         document.body.appendChild(modal);
     } catch {
-        showToast('Failed to get random drama');
+        showToast('Gagal mendapatkan drama acak');
     }
 }
 
@@ -881,8 +995,8 @@ async function loadSettings() {
                     <div class="settings-item-info">
                         <i class="fas fa-crown"></i>
                         <div>
-                            <div class="settings-item-name">Membership</div>
-                            <div class="settings-item-desc">${settings.membership || 'Free'}</div>
+                            <div class="settings-item-name">Keanggotaan</div>
+                            <div class="settings-item-desc">${userIsAdmin ? 'Admin' : (settings.membership || 'Free')}</div>
                         </div>
                     </div>
                 </div>
@@ -943,8 +1057,10 @@ function loadUpgradePage() {
     if (idEl) idEl.textContent = currentUser.telegram_id || '-';
 
     const statusEl = document.getElementById('upgrade-status');
-    if (statusEl && currentUser.membership === 'VIP') {
-        statusEl.innerHTML = '<div class="vip-active-badge"><i class="fas fa-check-circle"></i> Kamu sudah VIP Member!</div>';
+    if (statusEl && (currentUser.membership === 'VIP' || userIsAdmin)) {
+        statusEl.innerHTML = '<div class="vip-active-badge"><i class="fas fa-check-circle"></i> Kamu sudah memiliki akses penuh!</div>';
+    } else if (statusEl && currentUser.has_referral_access) {
+        statusEl.innerHTML = '<div class="vip-active-badge"><i class="fas fa-clock"></i> Akses referral aktif (24 jam)</div>';
     } else if (statusEl) {
         statusEl.innerHTML = '';
     }

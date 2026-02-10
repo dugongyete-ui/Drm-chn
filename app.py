@@ -23,6 +23,13 @@ API_BASE = 'https://api.sansekai.my.id/api/dramabox'
 SAWERIA_STREAM_KEY = os.environ.get('SAWERIA_STREAM_KEY', '')
 WEBAPP_DOMAIN = os.environ.get('WEBAPP_URL', f"https://{os.environ.get('REPLIT_DEV_DOMAIN', 'localhost:5000')}")
 
+def get_admin_id():
+    admin_id = os.environ.get('TELEGRAM_ADMIN_ID', '')
+    try:
+        return int(admin_id) if admin_id else None
+    except:
+        return None
+
 def get_db():
     conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     return conn
@@ -50,6 +57,7 @@ def init_db():
                 referred_by BIGINT,
                 language VARCHAR(10) DEFAULT 'id',
                 notifications_enabled BOOLEAN DEFAULT TRUE,
+                referral_access_expires_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -92,7 +100,18 @@ def init_db():
                 description TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS referral_logs (
+                id SERIAL PRIMARY KEY,
+                referrer_id BIGINT NOT NULL,
+                referred_id BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(referrer_id, referred_id)
+            );
         """)
+        try:
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_access_expires_at TIMESTAMP")
+        except:
+            pass
         conn.commit()
         logger.info("Database tables initialized successfully.")
     except Exception as e:
@@ -150,7 +169,10 @@ def upsert_user():
         """, (telegram_id, data.get('username'), data.get('first_name'), data.get('last_name'), data.get('avatar_url')))
         user = cur.fetchone()
         conn.commit()
-        return jsonify(dict(user))
+        user_dict = dict(user)
+        admin_id = get_admin_id()
+        user_dict['is_admin'] = (admin_id is not None and int(telegram_id) == admin_id)
+        return jsonify(user_dict)
     except Exception as e:
         conn.rollback()
         logger.error(f"User upsert error: {e}")
@@ -167,7 +189,15 @@ def get_user(telegram_id):
         cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
         user = cur.fetchone()
         if user:
-            return jsonify(dict(user))
+            user_dict = dict(user)
+            admin_id = get_admin_id()
+            user_dict['is_admin'] = (admin_id is not None and telegram_id == admin_id)
+            now = datetime.now()
+            if user_dict.get('referral_access_expires_at') and user_dict['referral_access_expires_at'] > now:
+                user_dict['has_referral_access'] = True
+            else:
+                user_dict['has_referral_access'] = False
+            return jsonify(user_dict)
         return jsonify({"error": "User not found"}), 404
     finally:
         cur.close()
@@ -353,16 +383,130 @@ def handle_referral():
         if user and user['referred_by']:
             return jsonify({"status": "already_referred"})
 
+        cur.execute("SELECT telegram_id FROM users WHERE telegram_id = %s", (referrer_id,))
+        referrer = cur.fetchone()
+        if not referrer:
+            return jsonify({"error": "referrer not found"}), 404
+
         cur.execute("UPDATE users SET referred_by = %s WHERE telegram_id = %s", (referrer_id, telegram_id))
+
+        try:
+            cur.execute("""
+                INSERT INTO referral_logs (referrer_id, referred_id)
+                VALUES (%s, %s)
+                ON CONFLICT (referrer_id, referred_id) DO NOTHING
+            """, (referrer_id, telegram_id))
+        except:
+            pass
+
         cur.execute("""
             UPDATE users SET referral_count = referral_count + 1, points = points + 100
             WHERE telegram_id = %s
+            RETURNING referral_count
         """, (referrer_id,))
+        updated = cur.fetchone()
+        new_count = updated['referral_count'] if updated else 0
+
+        if new_count > 0 and new_count % 3 == 0:
+            expires = datetime.now() + timedelta(hours=24)
+            cur.execute("""
+                UPDATE users SET referral_access_expires_at = %s
+                WHERE telegram_id = %s
+            """, (expires, referrer_id))
+
+            bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+            if bot_token:
+                try:
+                    import requests as req
+                    msg = (
+                        "🎉 <b>Selamat!</b>\n\n"
+                        f"Kamu berhasil mengundang {new_count} teman!\n"
+                        "🔓 Akses penuh 24 jam telah diaktifkan.\n"
+                        f"⏰ Berlaku hingga: {expires.strftime('%d %B %Y %H:%M')}\n\n"
+                        "Terus undang teman untuk mendapatkan akses gratis!"
+                    )
+                    req.post(
+                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                        json={"chat_id": referrer_id, "text": msg, "parse_mode": "HTML"}
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send referral notification: {e}")
+
         conn.commit()
-        return jsonify({"status": "ok"})
+        return jsonify({"status": "ok", "referral_count": new_count})
     except Exception as e:
         conn.rollback()
         return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+@app.route('/api/referral/status/<int:telegram_id>')
+def referral_status(telegram_id):
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT referral_count, referral_access_expires_at, points FROM users WHERE telegram_id = %s", (telegram_id,))
+        user = cur.fetchone()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        now = datetime.now()
+        has_access = False
+        expires_at = user.get('referral_access_expires_at')
+        if expires_at and expires_at > now:
+            has_access = True
+
+        next_reward = 3 - (user['referral_count'] % 3) if user['referral_count'] % 3 != 0 else 3
+
+        return jsonify({
+            "referral_count": user['referral_count'],
+            "points": user['points'],
+            "has_referral_access": has_access,
+            "referral_access_expires_at": expires_at.isoformat() if expires_at else None,
+            "referrals_until_next_reward": next_reward
+        })
+    finally:
+        cur.close()
+        conn.close()
+
+@app.route('/api/episode/access', methods=['POST'])
+def check_episode_access():
+    data = request.json
+    telegram_id = data.get('telegram_id')
+    episode_index = data.get('episode_index', 0)
+
+    if not telegram_id:
+        return jsonify({"allowed": episode_index < 10, "reason": "login_required"})
+
+    admin_id = get_admin_id()
+    if admin_id and int(telegram_id) == admin_id:
+        return jsonify({"allowed": True, "reason": "admin"})
+
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT membership, membership_expires_at, referral_access_expires_at FROM users WHERE telegram_id = %s", (telegram_id,))
+        user = cur.fetchone()
+        if not user:
+            return jsonify({"allowed": episode_index < 10, "reason": "user_not_found"})
+
+        now = datetime.now()
+
+        if user['membership'] == 'VIP':
+            if user['membership_expires_at'] is None or user['membership_expires_at'] > now:
+                return jsonify({"allowed": True, "reason": "vip"})
+            else:
+                cur.execute("UPDATE users SET membership = 'Free', membership_expires_at = NULL WHERE telegram_id = %s", (telegram_id,))
+                conn.commit()
+
+        if user.get('referral_access_expires_at') and user['referral_access_expires_at'] > now:
+            return jsonify({"allowed": True, "reason": "referral_access"})
+
+        if episode_index < 10:
+            return jsonify({"allowed": True, "reason": "free_episode"})
+
+        return jsonify({"allowed": False, "reason": "premium_required"})
     finally:
         cur.close()
         conn.close()
@@ -372,7 +516,7 @@ def check_subscription(telegram_id):
     conn = get_db()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT membership, membership_expires_at FROM users WHERE telegram_id = %s", (telegram_id,))
+        cur.execute("SELECT membership, membership_expires_at, referral_access_expires_at FROM users WHERE telegram_id = %s", (telegram_id,))
         user = cur.fetchone()
         if not user:
             return jsonify({"error": "User not found"}), 404
@@ -380,11 +524,17 @@ def check_subscription(telegram_id):
         membership = user['membership'] or 'Free'
         expires_at = user['membership_expires_at']
         is_active = False
+        now = datetime.now()
 
-        if membership == 'VIP':
+        admin_id = get_admin_id()
+        if admin_id and telegram_id == admin_id:
+            is_active = True
+            membership = 'Admin'
+
+        elif membership == 'VIP':
             if expires_at is None:
                 is_active = True
-            elif expires_at > datetime.now():
+            elif expires_at > now:
                 is_active = True
             else:
                 cur.execute("UPDATE users SET membership = 'Free', membership_expires_at = NULL WHERE telegram_id = %s", (telegram_id,))
@@ -392,11 +542,20 @@ def check_subscription(telegram_id):
                 membership = 'Free'
                 expires_at = None
 
+        has_referral_access = False
+        ref_expires = user.get('referral_access_expires_at')
+        if ref_expires and ref_expires > now:
+            has_referral_access = True
+            if not is_active:
+                is_active = True
+
         return jsonify({
             "telegram_id": telegram_id,
             "membership": membership,
             "is_active": is_active,
-            "expires_at": expires_at.isoformat() if expires_at else None
+            "has_referral_access": has_referral_access,
+            "expires_at": expires_at.isoformat() if expires_at else None,
+            "referral_access_expires_at": ref_expires.isoformat() if ref_expires else None
         })
     finally:
         cur.close()
@@ -538,7 +697,7 @@ def saweria_webhook():
             f"💎 Plan: <b>{plan_type}</b>\n"
             f"💰 Jumlah: Rp {amount:,}\n"
             f"📅 Berlaku sampai: <b>{expires_text}</b>\n\n"
-            "Terima kasih telah berlangganan DramaBox VIP! 🎬"
+            "Terima kasih telah berlangganan TG-DramaChina VIP! 🎬"
         )
         send_telegram_notification(telegram_id, notification)
 
@@ -609,16 +768,20 @@ def run_bot():
                 logger.error(f"User register error: {e}")
 
         welcome_text = (
-            "🎬 <b>Welcome to DramaBox!</b>\n\n"
-            "Nikmati ribuan drama China, Korea & Asia lainnya "
+            "🎬 <b>Selamat datang di TG-DramaChina!</b>\n\n"
+            "Nikmati ribuan drama China & Asia lainnya "
             "langsung dari Telegram!\n\n"
-            "📺 Tap <b>Open App</b> untuk mulai menonton.\n"
-            "💎 Dapatkan poin dengan mengundang teman!"
+            "📺 Tap <b>Buka Aplikasi</b> untuk mulai menonton.\n"
+            "💎 Undang 3 teman untuk akses penuh 24 jam GRATIS!\n"
+            "👑 Atau upgrade ke VIP untuk akses tanpa batas."
         )
 
         rows = []
         if WEBAPP_URL:
-            rows.append([InlineKeyboardButton(text="🎬 Open App", web_app=WebAppInfo(url=WEBAPP_URL))])
+            webapp_url = WEBAPP_URL
+            if ref_code and ref_code.startswith('ref_'):
+                webapp_url = f"{WEBAPP_URL}?ref={ref_code}"
+            rows.append([InlineKeyboardButton(text="🎬 Buka Aplikasi", web_app=WebAppInfo(url=webapp_url))])
         keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
 
         await message.answer(welcome_text, parse_mode=ParseMode.HTML, reply_markup=keyboard)

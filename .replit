@@ -1,4 +1,4 @@
-modules = ["python-3.11", "postgresql-16"]
+modules = ["nodejs-20", "python-3.11", "postgresql-16"]
 
 [nix]
 channel = "stable-25_05"
@@ -42,4 +42,4 @@ run = ["python", "app.py"]
 [userenv]
 
 [userenv.shared]
-WEBAPP_URL = "https://2451be78-0034-469f-924f-90ea1c442295-00-3igcpsyi9tmo0.riker.replit.dev"
+WEBAPP_URL = "https://566eccfd-936a-40b4-8cc5-f9cf5aed55f8-00-2azi0m54j9vmt.worf.replit.dev/"
