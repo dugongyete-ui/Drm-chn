@@ -18,7 +18,7 @@ TG-DramaChina is a Telegram Mini App for streaming Chinese and Asian dramas. It 
 ├── templates/
 │   └── index.html          # Single-page app HTML
 ├── static/
-│   ├── css/style.css       # All styles (dark theme)
+│   ├── css/style.css       # All styles (Netflix dark theme)
 │   └── js/app.js           # Frontend logic
 └── replit.md               # This file
 ```
@@ -30,14 +30,14 @@ TG-DramaChina is a Telegram Mini App for streaming Chinese and Asian dramas. It 
 4. **Favorites & History** - Saved in PostgreSQL per user
 5. **Episode Locking** - Free members: episodes 1-10, VIP/referral: all episodes, Admin: unrestricted
 6. **VIP Membership** - Via Saweria payment (3 days/2 weeks/1 month/1 year)
-7. **Referral System** - Every 3 referrals = 24-hour full access. Progress bar in profile.
+7. **Referral System** - Every 3 referrals = 24-hour full access. Notifications sent on each successful referral.
 8. **Admin Detection** - Via TELEGRAM_ADMIN_ID env variable
 9. **Reports** - Users can report issues, forwarded to admin via Telegram
 
 ## Environment Variables
 - `TELEGRAM_BOT_TOKEN` - Telegram bot token
 - `TELEGRAM_ADMIN_ID` - Admin's Telegram user ID (full access)
-- `WEBAPP_URL` - Public URL of the web app
+- `WEBAPP_URL` - Public URL of the web app (auto-detected from REPLIT_DEV_DOMAIN if not set)
 - `DATABASE_URL` - PostgreSQL connection string (auto-set by Replit)
 - `SAWERIA_STREAM_KEY` - Saweria webhook signature verification key
 
@@ -50,17 +50,16 @@ TG-DramaChina is a Telegram Mini App for streaming Chinese and Asian dramas. It 
 - `referral_logs` - Referral tracking log
 
 ## Recent Changes (Feb 2026)
-- Renamed from DramaBox to TG-DramaChina across all files
-- Fixed drama detail/description display (expanded field checks)
-- Implemented episode locking: free=ep 1-10, premium=ep 11+
-- Fixed video player stopping on navigation
-- Fixed random drama button using foryou endpoint
-- Enhanced referral system with 24-hour access rewards (every 3 referrals)
-- Added referral progress bar in profile
-- Updated bot welcome text with TG-DramaChina branding
-- All UI text now in Indonesian (Bahasa Indonesia)
+- **Netflix-style UI overhaul**: Dark background (#0a0a0a), red accent (#e50914), gold VIP accents, smooth animations, skeleton loaders
+- **Fixed API 405 errors**: /api/user and /api/referral now accept both GET and POST methods
+- **Enhanced referral system**: Processes referrals from URL params (?ref=ref_xxx) and Telegram start_param. Sends notification to referrer on every successful invite (not just every 3rd).
+- **Fixed pricing selection**: Clear visual distinction between selected vs recommended items with proper border/background/shadow states
+- **Page transitions**: Smooth enter/exit animations between pages
+- **Card animations**: Staggered card entrance animations with scale/opacity effects
+- **Modern navigation**: Bottom nav with active indicator animations
 
 ## User Preferences
 - Language: Indonesian (Bahasa Indonesia) for all UI text
-- Dark theme with accent gradient
+- Netflix-style dark theme: #0a0a0a background, #e50914 red accent, #f5c518 gold VIP
 - Mobile-first design for Telegram Mini App
+- Referral notifications on every successful referral to keep users engaged
