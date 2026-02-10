@@ -7,6 +7,13 @@ let currentLibTab = 'history';
 let favorites = [];
 let searchTimeout = null;
 let previousPage = 'home';
+let homePage = 1;
+let homeLoading = false;
+let homeHasMore = true;
+let searchPage = 1;
+let searchLoading = false;
+let searchHasMore = true;
+let lastSearchQuery = '';
 
 const tg = window.Telegram?.WebApp;
 
@@ -102,16 +109,31 @@ function goBackFromDetail() {
     showPage(previousPage);
 }
 
-async function loadHomeContent(tab) {
-    currentTab = tab;
+async function loadHomeContent(tab, append) {
+    if (!append) {
+        currentTab = tab;
+        homePage = 1;
+        homeHasMore = true;
+    }
+
+    if (homeLoading || (!homeHasMore && append)) return;
+    homeLoading = true;
+
     const container = document.getElementById('home-content');
-    container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+    if (!append) {
+        container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+    } else {
+        removeLoadMore('home');
+        appendLoadingIndicator(container);
+    }
 
     let endpoint = tab;
     let params = '';
     if (tab === 'dubindo') {
         endpoint = 'dubindo';
-        params = '?classify=terpopuler&page=1';
+        params = `?classify=terpopuler&page=${homePage}`;
+    } else {
+        params = `?page=${homePage}`;
     }
 
     try {
@@ -122,31 +144,90 @@ async function loadHomeContent(tab) {
             data = JSON.parse(text);
         } catch (pe) {
             console.error('JSON parse error:', pe, text.substring(0, 200));
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to parse data</p></div>';
+            if (!append) container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to parse data</p></div>';
+            homeLoading = false;
             return;
         }
 
-        let items = [];
-        if (Array.isArray(data)) {
-            items = data;
-        } else if (data && data.data) {
-            items = Array.isArray(data.data) ? data.data : (data.data.bookList || data.data.list || []);
-        } else if (data && data.result) {
-            items = Array.isArray(data.result) ? data.result : (data.result.bookList || data.result.list || []);
-        }
+        let items = extractItems(data);
 
         if (!items || items.length === 0) {
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-film"></i><p>No dramas found</p></div>';
+            homeHasMore = false;
+            removeLoadingIndicator(container);
+            if (!append) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-film"></i><p>No dramas found</p></div>';
+            }
+            homeLoading = false;
             return;
         }
 
-        container.innerHTML = '<div class="content-grid" style="padding:0;">' +
-            items.map((item, i) => renderDramaCard(item, i)).join('') +
-            '</div>';
+        if (items.length < 5) {
+            homeHasMore = false;
+        }
+
+        if (append) {
+            removeLoadingIndicator(container);
+            const grid = container.querySelector('.content-grid');
+            if (grid) {
+                const startIdx = grid.children.length;
+                grid.insertAdjacentHTML('beforeend', items.map((item, i) => renderDramaCard(item, startIdx + i)).join(''));
+            }
+        } else {
+            container.innerHTML = '<div class="content-grid" style="padding:0;">' +
+                items.map((item, i) => renderDramaCard(item, i)).join('') +
+                '</div>';
+        }
+
+        homePage++;
+
+        if (homeHasMore) {
+            appendLoadMoreButton(container, 'home');
+        }
     } catch (e) {
         console.error('Load error:', e);
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load: ' + e.message + '</p></div>';
+        removeLoadingIndicator(container);
+        if (!append) container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load: ' + e.message + '</p></div>';
     }
+    homeLoading = false;
+}
+
+function extractItems(data) {
+    let items = [];
+    if (Array.isArray(data)) {
+        items = data;
+    } else if (data && data.data) {
+        items = Array.isArray(data.data) ? data.data : (data.data.bookList || data.data.list || []);
+    } else if (data && data.result) {
+        items = Array.isArray(data.result) ? data.result : (data.result.bookList || data.result.list || []);
+    }
+    return items;
+}
+
+function appendLoadMoreButton(container, type) {
+    const btn = document.createElement('div');
+    btn.className = 'load-more-wrapper';
+    btn.setAttribute('data-loadmore', type);
+    btn.innerHTML = '<button class="btn-load-more" onclick="' +
+        (type === 'home' ? 'loadHomeContent(currentTab, true)' : 'loadMoreSearch()') +
+        '"><i class="fas fa-arrow-down"></i> Load More</button>';
+    container.appendChild(btn);
+}
+
+function removeLoadMore(type) {
+    const el = document.querySelector(`[data-loadmore="${type}"]`);
+    if (el) el.remove();
+}
+
+function appendLoadingIndicator(container) {
+    const el = document.createElement('div');
+    el.className = 'load-more-spinner';
+    el.innerHTML = '<div class="spinner"></div>';
+    container.appendChild(el);
+}
+
+function removeLoadingIndicator(container) {
+    const el = container.querySelector('.load-more-spinner');
+    if (el) el.remove();
 }
 
 function renderDramaCard(item, index) {
@@ -212,33 +293,69 @@ function handleSearch(query) {
     }
 
     document.getElementById('search-suggestions').style.display = 'none';
-    searchTimeout = setTimeout(async () => {
-        const container = document.getElementById('search-results');
+    lastSearchQuery = query;
+    searchPage = 1;
+    searchHasMore = true;
+
+    searchTimeout = setTimeout(() => doSearch(query, false), 400);
+}
+
+async function doSearch(query, append) {
+    if (searchLoading || (!searchHasMore && append)) return;
+    searchLoading = true;
+
+    const container = document.getElementById('search-results');
+    if (!append) {
         container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+    } else {
+        removeLoadMore('search');
+        appendLoadingIndicator(container);
+    }
 
-        try {
-            const resp = await fetch(`${API_BASE}/search?query=${encodeURIComponent(query)}`);
-            const data = await resp.json();
+    try {
+        const resp = await fetch(`${API_BASE}/search?query=${encodeURIComponent(query)}&page=${searchPage}`);
+        const data = await resp.json();
+        let items = extractItems(data);
 
-            let items = [];
-            if (data.data) {
-                items = Array.isArray(data.data) ? data.data : (data.data.bookList || data.data.list || []);
-            } else if (Array.isArray(data)) {
-                items = data;
-            } else if (data.result) {
-                items = Array.isArray(data.result) ? data.result : [];
-            }
-
-            if (!items || items.length === 0) {
+        if (!items || items.length === 0) {
+            searchHasMore = false;
+            removeLoadingIndicator(container);
+            if (!append) {
                 container.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>No results found</p></div>';
-                return;
             }
-
-            container.innerHTML = items.map((item, i) => renderDramaCard(item, i)).join('');
-        } catch (e) {
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Search failed</p></div>';
+            searchLoading = false;
+            return;
         }
-    }, 400);
+
+        if (items.length < 5) {
+            searchHasMore = false;
+        }
+
+        if (append) {
+            removeLoadingIndicator(container);
+            const startIdx = container.querySelectorAll('.drama-card').length;
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = items.map((item, i) => renderDramaCard(item, startIdx + i)).join('');
+            while (wrapper.firstChild) {
+                container.insertBefore(wrapper.firstChild, container.querySelector('[data-loadmore]'));
+            }
+        } else {
+            container.innerHTML = items.map((item, i) => renderDramaCard(item, i)).join('');
+        }
+
+        searchPage++;
+        if (searchHasMore) {
+            appendLoadMoreButton(container, 'search');
+        }
+    } catch (e) {
+        removeLoadingIndicator(container);
+        if (!append) container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Search failed</p></div>';
+    }
+    searchLoading = false;
+}
+
+function loadMoreSearch() {
+    doSearch(lastSearchQuery, true);
 }
 
 function clearSearch() {
