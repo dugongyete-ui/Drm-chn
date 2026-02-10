@@ -27,6 +27,81 @@ def get_db():
     conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     return conn
 
+def init_db():
+    if not DATABASE_URL:
+        logger.warning("DATABASE_URL not set. Database features won't work.")
+        return
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT UNIQUE NOT NULL,
+                username VARCHAR(255),
+                first_name VARCHAR(255),
+                last_name VARCHAR(255),
+                avatar_url TEXT,
+                membership VARCHAR(50) DEFAULT 'Free',
+                membership_expires_at TIMESTAMP,
+                points INTEGER DEFAULT 0,
+                commission INTEGER DEFAULT 0,
+                referral_count INTEGER DEFAULT 0,
+                referred_by BIGINT,
+                language VARCHAR(10) DEFAULT 'id',
+                notifications_enabled BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS subscriptions (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT NOT NULL,
+                saweria_transaction_id VARCHAR(255) UNIQUE,
+                plan_type VARCHAR(100),
+                amount INTEGER,
+                donator_name VARCHAR(255),
+                donator_email VARCHAR(255),
+                status VARCHAR(50) DEFAULT 'active',
+                activated_at TIMESTAMP,
+                expires_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS favorites (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT NOT NULL,
+                book_id VARCHAR(255) NOT NULL,
+                title VARCHAR(500),
+                cover_url TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(telegram_id, book_id)
+            );
+            CREATE TABLE IF NOT EXISTS watch_history (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT NOT NULL,
+                book_id VARCHAR(255) NOT NULL,
+                title VARCHAR(500),
+                cover_url TEXT,
+                episode_number VARCHAR(100),
+                watched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(telegram_id, book_id)
+            );
+            CREATE TABLE IF NOT EXISTS reports (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT NOT NULL,
+                issue_type VARCHAR(255),
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        conn.commit()
+        logger.info("Database tables initialized successfully.")
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Database init error: {e}")
+    finally:
+        cur.close()
+        conn.close()
+
 @app.after_request
 def add_headers(response):
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
@@ -317,7 +392,7 @@ def get_settings(telegram_id):
     conn = get_db()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT language, notifications_enabled FROM users WHERE telegram_id = %s", (telegram_id,))
+        cur.execute("SELECT language, notifications_enabled, membership FROM users WHERE telegram_id = %s", (telegram_id,))
         user = cur.fetchone()
         if not user:
             return jsonify({"error": "User not found"}), 404
@@ -553,6 +628,7 @@ def run_bot():
     loop.run_until_complete(bot_main())
 
 if __name__ == '__main__':
+    init_db()
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
     logger.info("Starting web server on port 5000...")
