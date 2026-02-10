@@ -300,6 +300,21 @@ def submit_report():
         cur.close()
         conn.close()
 
+@app.route('/api/bot/info')
+def get_bot_info():
+    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not bot_token:
+        return jsonify({"username": ""})
+    try:
+        import requests as req
+        resp = req.get(f"https://api.telegram.org/bot{bot_token}/getMe", timeout=10)
+        data = resp.json()
+        if data.get('ok'):
+            return jsonify({"username": data['result'].get('username', '')})
+        return jsonify({"username": ""})
+    except:
+        return jsonify({"username": ""})
+
 @app.route('/api/user/photo/<int:telegram_id>')
 def get_user_photo(telegram_id):
     conn = get_db()

@@ -629,8 +629,13 @@ async function loadProfile() {
 
     const initial = (userData.first_name || 'G')[0].toUpperCase();
     const avatarUrl = userData.avatar_url || '';
-    const botUsername = 'DramaBoxBot';
-    const refLink = `https://t.me/${botUsername}?start=ref_${userData.telegram_id}`;
+    let botUsername = '';
+    try {
+        const botResp = await fetch('/api/bot/info');
+        const botData = await botResp.json();
+        botUsername = botData.username || '';
+    } catch {}
+    const refLink = botUsername ? `https://t.me/${botUsername}?start=ref_${userData.telegram_id}` : 'Bot belum dikonfigurasi';
 
     const avatarHtml = avatarUrl
         ? `<img src="${avatarUrl}" alt="Avatar" class="profile-avatar-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
