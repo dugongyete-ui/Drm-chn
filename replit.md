@@ -1,83 +1,66 @@
-# DramaBox - Telegram Mini App
+# TG-DramaChina
 
 ## Overview
-A Telegram Bot with integrated Mini App (Web App) for streaming Chinese & Asian dramas (Dramabox style). Features a dark-themed modern dashboard with drama browsing, search, video playback, favorites, watch history, user profiles, VIP membership via Saweria payments, and full settings.
+TG-DramaChina is a Telegram Mini App for streaming Chinese and Asian dramas. It features drama browsing, search, video playback, favorites, watch history, VIP membership via Saweria payments, and a referral system.
 
-## Architecture
-- **Backend:** Python Flask (web server + API proxy) + aiogram (Telegram bot)
-- **Frontend:** HTML5, CSS3, Vanilla JavaScript (SPA)
-- **Database:** PostgreSQL (users, subscriptions, favorites, watch history, reports)
-- **External API:** DramaBox API at `https://api.sansekai.my.id/api/dramabox`
-- **Payment:** Saweria webhook integration for VIP subscriptions
+## Tech Stack
+- **Backend**: Python/Flask
+- **Frontend**: Vanilla HTML/CSS/JS (Telegram Mini App)
+- **Database**: PostgreSQL (Replit built-in)
+- **Bot**: aiogram (Telegram Bot API)
+- **API**: Proxied from api.sansekai.my.id/api/dramabox
+- **Payment**: Saweria webhook integration
 
 ## Project Structure
 ```
-app.py              - Main entry point (Flask server + Telegram bot + Saweria webhook)
-bot.py              - Standalone bot script (backup)
-install.sh          - Auto dependency installer (uses uv/pip)
-templates/
-  index.html        - Main SPA template (all pages)
-static/
-  css/style.css     - Dark theme styling
-  js/app.js         - Frontend SPA logic
+.
+├── app.py                  # Main Flask app + Telegram bot
+├── templates/
+│   └── index.html          # Single-page app HTML
+├── static/
+│   ├── css/style.css       # All styles (dark theme)
+│   └── js/app.js           # Frontend logic
+└── replit.md               # This file
 ```
 
 ## Key Features
-- Home page with tabs: For You, Latest, Trending, Dub Indo
-- Real-time search with popular suggestions
-- Drama detail with synopsis, tags, episodes
-- HTML5 video player
-- Favorites & watch history (database-backed)
-- User profile with Telegram avatar, stats, membership, referral system
-- VIP Membership upgrade via Saweria payment (auto-activated via webhook)
-- Settings page (language, notifications, clear history)
-- About page (app info, features list)
-- Help center with report form
-- Pagination (Load More) on all content pages
-- Telegram Bot with /start and Open App button only (clean UI)
-
-## Saweria Integration
-- Payment URL: `https://saweria.co/dugongyete`
-- Webhook endpoint: `/webhook/saweria`
-- User puts their Telegram ID in the Saweria message field
-- Pricing tiers (IDR):
-  - Rp 5.000+ = 3 Hari VIP
-  - Rp 10.000+ = 2 Minggu VIP
-  - Rp 35.000+ = 1 Bulan VIP
-  - Rp 250.000+ = 1 Tahun VIP
-- Webhook verifies HMAC SHA256 signature using SAWERIA_STREAM_KEY
-- Auto-activates VIP and sends Telegram notification on successful payment
-
-## Database Tables
-- `users` - User profiles, membership status, points, referrals, settings, avatar_url
-- `subscriptions` - Payment/subscription records from Saweria
-- `favorites` - Saved drama favorites
-- `watch_history` - Drama watch history
-- `reports` - User issue reports
+1. **Drama Browsing** - For You, Latest, Trending, Dub Indo tabs
+2. **Search** - Real-time search with popular suggestions
+3. **Video Playback** - In-app video player with episode list
+4. **Favorites & History** - Saved in PostgreSQL per user
+5. **Episode Locking** - Free members: episodes 1-10, VIP/referral: all episodes, Admin: unrestricted
+6. **VIP Membership** - Via Saweria payment (3 days/2 weeks/1 month/1 year)
+7. **Referral System** - Every 3 referrals = 24-hour full access. Progress bar in profile.
+8. **Admin Detection** - Via TELEGRAM_ADMIN_ID env variable
+9. **Reports** - Users can report issues, forwarded to admin via Telegram
 
 ## Environment Variables
+- `TELEGRAM_BOT_TOKEN` - Telegram bot token
+- `TELEGRAM_ADMIN_ID` - Admin's Telegram user ID (full access)
+- `WEBAPP_URL` - Public URL of the web app
 - `DATABASE_URL` - PostgreSQL connection string (auto-set by Replit)
-- `TELEGRAM_BOT_TOKEN` - Bot token from @BotFather
-- `WEBAPP_URL` - URL of the deployed web app
-- `TELEGRAM_ADMIN_ID` - Admin chat ID for receiving reports
-- `SAWERIA_STREAM_KEY` - Stream key from Saweria webhook settings
+- `SAWERIA_STREAM_KEY` - Saweria webhook signature verification key
 
-## Running
-- `python app.py` starts both web server (port 5000) and Telegram bot
-- Database tables are auto-created on startup
-- `bash install.sh` installs all dependencies via uv or pip
+## Database Tables
+- `users` - User profiles, membership, referral tracking
+- `subscriptions` - Saweria payment records
+- `favorites` - User favorite dramas
+- `watch_history` - User watch history
+- `reports` - User bug reports
+- `referral_logs` - Referral tracking log
 
-## Deployment
-- Uses gunicorn for production: `gunicorn --bind=0.0.0.0:5000 --workers=2 --timeout=120 app:app`
-- Bot runs in a background thread within the same process
+## Recent Changes (Feb 2026)
+- Renamed from DramaBox to TG-DramaChina across all files
+- Fixed drama detail/description display (expanded field checks)
+- Implemented episode locking: free=ep 1-10, premium=ep 11+
+- Fixed video player stopping on navigation
+- Fixed random drama button using foryou endpoint
+- Enhanced referral system with 24-hour access rewards (every 3 referrals)
+- Added referral progress bar in profile
+- Updated bot welcome text with TG-DramaChina branding
+- All UI text now in Indonesian (Bahasa Indonesia)
 
-## Recent Changes
-- 2026-02-10: Fixed install.sh - now supports both python3 and python commands, uv and pip
-- 2026-02-10: Removed Official Group, TopUp, Help/OSINT buttons from bot (only Open App button remains)
-- 2026-02-10: Added Telegram profile photo support - bot fetches actual avatar from Telegram API
-- 2026-02-10: Profile page now shows real Telegram avatar with fallback to initial letter
-- 2026-02-10: Added auto database initialization on startup (CREATE TABLE IF NOT EXISTS)
-- 2026-02-10: Fixed hardcoded WEBAPP_DOMAIN to use environment variable
-- 2026-02-10: Added /api/user/photo endpoint for avatar retrieval
-- 2026-02-10: Settings API now returns membership status
-- 2026-02-10: Configured deployment with gunicorn autoscale
+## User Preferences
+- Language: Indonesian (Bahasa Indonesia) for all UI text
+- Dark theme with accent gradient
+- Mobile-first design for Telegram Mini App
