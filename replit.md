@@ -1,7 +1,7 @@
-# TG-DramaChina
+# Drama China
 
 ## Overview
-TG-DramaChina is a Telegram Mini App for streaming Chinese and Asian dramas. It features drama browsing, search, video playback, favorites, watch history, VIP membership via Saweria payments, and a referral system.
+Drama China is a Telegram Mini App for streaming Chinese and Asian dramas. It features drama browsing, search, video playback, favorites, watch history, VIP membership via Saweria payments, and a referral system.
 
 ## Tech Stack
 - **Backend**: Python/Flask
