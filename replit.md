@@ -40,7 +40,16 @@ Bot Telegram untuk streaming drama China, Korea & Asia. Terintegrasi dengan Dram
 - Run command: `gunicorn --bind=0.0.0.0:5000 --workers=1 --threads=4 --timeout=120 wsgi:app`
 - Development: `python app.py` on port 5000
 
+## Subscription Plans (Saweria)
+- 3 Hari VIP: Rp 3.000+ (min donation)
+- 2 Minggu VIP: Rp 10.000+
+- 1 Bulan VIP: Rp 35.000+
+- 1 Tahun VIP: Rp 250.000+
+- Logika: jumlah donasi menentukan paket (threshold tertinggi yang terpenuhi)
+
 ## Recent Changes
+- 2026-02-10: Auto-play next episode now plays immediately (removed 5-second countdown)
+- 2026-02-10: Changed minimum VIP plan from Rp 5.000 to Rp 3.000
 - 2026-02-10: Added auto-play next episode feature (5-second countdown with cancel/play now buttons)
 - 2026-02-10: Fixed deployment build errors (removed nodejs-20, vercel-pkg, unnecessary deps)
 - 2026-02-10: Configured gunicorn for production deployment
