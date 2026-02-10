@@ -426,7 +426,7 @@ async function openDrama(bookId, encodedTitle, encodedCover) {
             detail = typeof detailData.result === 'object' && !Array.isArray(detailData.result) ? detailData.result : detailData;
         }
 
-        const rawSynopsis = detail.description || detail.synopsis || detail.intro || detail.brief || detail.content || detail.bookInfo || '';
+        const rawSynopsis = detail.introduction || detail.description || detail.synopsis || detail.intro || detail.brief || detail.content || detail.bookInfo || '';
         const synopsis = rawSynopsis || 'Deskripsi tidak tersedia.';
 
         currentDrama = {
@@ -891,7 +891,7 @@ async function showRandomDrama() {
         const id = drama.bookId || drama.id || '';
         const title = drama.bookName || drama.name || drama.title || 'Tidak diketahui';
         const cover = drama.coverWap || drama.cover || drama.coverUrl || '';
-        const synopsis = drama.description || drama.synopsis || drama.intro || drama.brief || '';
+        const synopsis = drama.introduction || drama.description || drama.synopsis || drama.intro || drama.brief || '';
 
         if (!id) {
             showToast('Gagal mendapatkan drama acak');
