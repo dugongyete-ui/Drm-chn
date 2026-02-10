@@ -2,6 +2,7 @@ modules = ["python-3.11", "postgresql-16"]
 
 [nix]
 channel = "stable-25_05"
+packages = ["vercel-pkg"]
 
 [agent]
 expertMode = true
@@ -41,4 +42,4 @@ run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "--workers=1", "--thre
 [userenv]
 
 [userenv.shared]
-WEBAPP_URL = "https://c58f7351-be46-47fb-8552-461c3880cac4-00-31z2zq2jal8jx.riker.replit.dev"
+WEBAPP_URL = ""
