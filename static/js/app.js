@@ -427,7 +427,7 @@ async function openDrama(bookId, encodedTitle, encodedCover) {
                 <h3 class="section-title">Episodes (${episodes.length})</h3>
                 <div class="episode-grid">
                     ${episodes.map((ep, i) => {
-                        const epNum = ep.episodeNumber || ep.number || ep.idx || (i + 1);
+                        const epNum = getEpNum(ep, i);
                         return `<button class="episode-btn" onclick="playEpisode(${i})">${epNum}</button>`;
                     }).join('')}
                 </div>
@@ -450,12 +450,33 @@ function toggleSynopsis() {
     }
 }
 
+function extractVideoUrl(ep) {
+    if (ep.videoUrl || ep.url || ep.video || ep.playUrl) {
+        return ep.videoUrl || ep.url || ep.video || ep.playUrl;
+    }
+    if (ep.cdnList && Array.isArray(ep.cdnList)) {
+        const cdn = ep.cdnList.find(c => c.isDefault === 1) || ep.cdnList[0];
+        if (cdn && cdn.videoPathList && Array.isArray(cdn.videoPathList)) {
+            const vid = cdn.videoPathList.find(v => v.isDefault === 1) ||
+                        cdn.videoPathList.find(v => v.quality === 720) ||
+                        cdn.videoPathList.find(v => v.quality === 540) ||
+                        cdn.videoPathList[0];
+            if (vid && vid.videoPath) return vid.videoPath;
+        }
+    }
+    return '';
+}
+
+function getEpNum(ep, index) {
+    return ep.chapterName || ep.episodeNumber || ep.number || ep.idx || (index + 1);
+}
+
 async function playEpisode(index) {
     const ep = currentEpisodes[index];
     if (!ep) return;
 
-    const videoUrl = ep.videoUrl || ep.url || ep.video || ep.playUrl || '';
-    const epNum = ep.episodeNumber || ep.number || ep.idx || (index + 1);
+    const videoUrl = extractVideoUrl(ep);
+    const epNum = getEpNum(ep, index);
 
     if (!videoUrl) {
         showToast('Video URL not available');
@@ -463,7 +484,7 @@ async function playEpisode(index) {
     }
 
     showPage('player');
-    document.getElementById('player-title').textContent = `${currentDrama.title} - Ep ${epNum}`;
+    document.getElementById('player-title').textContent = `${currentDrama.title} - ${epNum}`;
 
     const player = document.getElementById('video-player');
     player.src = videoUrl;
@@ -474,7 +495,7 @@ async function playEpisode(index) {
         <h3 class="section-title">All Episodes</h3>
         <div class="episode-grid">
             ${currentEpisodes.map((e, i) => {
-                const n = e.episodeNumber || e.number || e.idx || (i + 1);
+                const n = getEpNum(e, i);
                 return `<button class="episode-btn ${i === index ? 'active' : ''}" onclick="playEpisode(${i})">${n}</button>`;
             }).join('')}
         </div>`;
