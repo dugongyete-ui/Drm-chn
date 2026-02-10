@@ -1959,6 +1959,133 @@ textarea.form-input {
     text-align: right;
 }
 
+.autoplay-overlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 50;
+    align-items: center;
+    justify-content: center;
+}
+
+.autoplay-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    text-align: center;
+}
+
+.autoplay-countdown-circle {
+    position: relative;
+    width: 72px;
+    height: 72px;
+}
+
+.autoplay-countdown-circle svg {
+    width: 72px;
+    height: 72px;
+    transform: rotate(-90deg);
+}
+
+.autoplay-circle-bg {
+    fill: none;
+    stroke: #333;
+    stroke-width: 2.5;
+}
+
+.autoplay-circle-fg {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.5s ease;
+}
+
+.autoplay-number {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.autoplay-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.autoplay-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.autoplay-ep-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.autoplay-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.btn-autoplay-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 8px 20px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-autoplay-cancel:active {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-autoplay-now {
+    background: var(--accent-gradient);
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.btn-autoplay-now:active {
+    transform: scale(0.95);
+}
+
+.fullscreen-mode .autoplay-overlay {
+    z-index: 10001;
+}
+
 @media (max-width: 360px) {
     .content-grid {
         grid-template-columns: repeat(2, 1fr);

@@ -41,6 +41,7 @@ Bot Telegram untuk streaming drama China, Korea & Asia. Terintegrasi dengan Dram
 - Development: `python app.py` on port 5000
 
 ## Recent Changes
+- 2026-02-10: Added auto-play next episode feature (5-second countdown with cancel/play now buttons)
 - 2026-02-10: Fixed deployment build errors (removed nodejs-20, vercel-pkg, unnecessary deps)
 - 2026-02-10: Configured gunicorn for production deployment
 - 2026-02-10: Fixed WEBAPP_URL trailing slash issue
