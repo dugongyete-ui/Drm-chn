@@ -1047,13 +1047,6 @@ if __name__ == '__main__':
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
 
-    try:
-        from keep_alive import start_keep_alive
-        if os.environ.get('KOYEB_PUBLIC_DOMAIN'):
-            start_keep_alive()
-    except Exception as e:
-        logger.warning(f"Keep-alive not started: {e}")
-
     port = int(os.environ.get('PORT', 5000))
     logger.info(f"Starting web server on port {port}...")
     app.run(host='0.0.0.0', port=port, debug=False)

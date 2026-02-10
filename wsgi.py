@@ -11,11 +11,3 @@ init_db()
 bot_thread = threading.Thread(target=run_bot, daemon=True)
 bot_thread.start()
 logger.info("Bot thread started via gunicorn")
-
-try:
-    from keep_alive import start_keep_alive
-    if os.environ.get('KOYEB_PUBLIC_DOMAIN'):
-        start_keep_alive()
-        logger.info("Keep-alive started for Koyeb")
-except Exception as e:
-    logger.warning(f"Keep-alive not started: {e}")

@@ -6,15 +6,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-SELF_URL = os.environ.get('KOYEB_PUBLIC_DOMAIN', '')
 PING_INTERVAL = 240
 
 def ping_self():
-    if not SELF_URL:
-        logger.warning("KOYEB_PUBLIC_DOMAIN not set, keep-alive disabled")
+    webapp_url = os.environ.get('WEBAPP_URL', '')
+    if not webapp_url:
+        logger.warning("WEBAPP_URL not set, keep-alive disabled")
         return
 
-    url = f"https://{SELF_URL}/health"
+    url = f"{webapp_url}/health"
     logger.info(f"Keep-alive started: pinging {url} every {PING_INTERVAL}s")
 
     while True:

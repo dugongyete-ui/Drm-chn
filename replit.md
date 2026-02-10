@@ -1,91 +1,48 @@
-# Drama China
+# Drama China Telegram Bot
 
 ## Overview
-Drama China is a Telegram Mini App for streaming Chinese and Asian dramas. It features drama browsing, search, video playback, favorites, watch history, VIP membership via Saweria payments, and a referral system.
+Bot Telegram untuk streaming drama China, Korea & Asia. Terintegrasi dengan DramaBox API dan sistem pembayaran Saweria.
 
-## Tech Stack
-- **Backend**: Python/Flask
-- **Frontend**: Vanilla HTML/CSS/JS (Telegram Mini App)
-- **Database**: PostgreSQL (Replit built-in)
-- **Bot**: aiogram (Telegram Bot API)
-- **API**: Proxied from api.sansekai.my.id/api/dramabox
-- **Payment**: Saweria webhook integration
+## Current State
+- Production-ready dengan gunicorn
+- Bot Telegram aktif menggunakan aiogram (polling mode)
+- Web app Flask sebagai backend API + dashboard
+- Database PostgreSQL (Neon-backed via Replit)
 
-## Project Structure
-```
-.
-├── app.py                  # Main Flask app + Telegram bot
-├── bot.py                  # Standalone bot (not used when app.py runs)
-├── wsgi.py                 # Gunicorn entry point (auto-starts bot + keep-alive)
-├── keep_alive.py           # Anti-sleep ping mechanism for Koyeb
-├── Dockerfile              # Docker config for Koyeb deployment
-├── requirements.txt        # Python dependencies
-├── start.sh                # Alternative startup script
-├── DEPLOY_KOYEB.md         # Deployment guide for Koyeb free tier
-├── templates/
-│   └── index.html          # Single-page app HTML
-├── static/
-│   ├── css/style.css       # All styles (Netflix dark theme)
-│   ├── js/app.js           # Frontend logic
-│   └── images/
-│       ├── welcome_banner.png  # Bot /start welcome photo
-│       └── bot_profile.png     # Bot profile picture (for manual upload)
-└── replit.md               # This file
-```
+## Project Architecture
 
-## Key Features
-1. **Drama Browsing** - For You, Latest, Trending, Dub Indo tabs
-2. **Search** - Real-time search with popular suggestions
-3. **Video Playback** - In-app video player with episode list
-4. **Favorites & History** - Saved in PostgreSQL per user
-5. **Episode Locking** - Free members: episodes 1-10, VIP/referral: all episodes, Admin: unrestricted
-6. **VIP Membership** - Via Saweria payment (3 days/2 weeks/1 month/1 year)
-7. **Referral System** - Two tiers: every 3 referrals = 24-hour access, reaching 10 referrals = 2-week access. Notifications sent on each successful referral with progress updates.
-8. **Admin Detection** - Via TELEGRAM_ADMIN_ID env variable
-9. **Reports** - Users can report issues, forwarded to admin via Telegram
+### Files
+- `app.py` - Main application: Flask web server + bot logic + all API endpoints
+- `bot.py` - Standalone bot module (not used in production, app.py has integrated bot)
+- `wsgi.py` - WSGI entry point for gunicorn (production)
+- `keep_alive.py` - Self-ping keep-alive utility
+- `templates/index.html` - Web dashboard template
+- `static/` - CSS, JS, images
 
-## Environment Variables
-- `TELEGRAM_BOT_TOKEN` - Telegram bot token
-- `TELEGRAM_ADMIN_ID` - Admin's Telegram user ID (full access)
-- `WEBAPP_URL` - Public URL of the web app (auto-detected from REPLIT_DEV_DOMAIN if not set)
-- `DATABASE_URL` - PostgreSQL connection string (auto-set by Replit)
-- `SAWERIA_STREAM_KEY` - Saweria webhook signature verification key
+### Key Features
+- DramaBox API proxy for streaming
+- User management (registration, profiles, avatars)
+- Favorites & watch history
+- Referral system with rewards (3 refs = 24h, 10 refs = 2 weeks access)
+- Saweria webhook for VIP payments
+- Admin dashboard with monthly stats
+- Episode access control (free 10 eps, VIP all eps)
 
-## Database Tables
-- `users` - User profiles, membership, referral tracking
-- `subscriptions` - Saweria payment records
-- `favorites` - User favorite dramas
-- `watch_history` - User watch history
-- `reports` - User bug reports
-- `referral_logs` - Referral tracking log
+### Environment Variables
+- `TELEGRAM_BOT_TOKEN` (secret) - Bot token
+- `TELEGRAM_ADMIN_ID` (secret) - Admin Telegram ID
+- `DATABASE_URL` (secret) - PostgreSQL connection string
+- `WEBAPP_URL` - Web app URL (different for dev/production)
+- `SAWERIA_STREAM_KEY` - Saweria webhook signature key
 
-## Recent Changes (Feb 2026)
-- **Bot /start with photo**: Bot now sends a welcome banner image when user hits /start, with description and inline keyboard
-- **Bot profile picture**: Generated profile picture available at static/images/bot_profile.png for manual upload to BotFather
-- **Monthly statistics dashboard**: Admin-only page showing total users, new users, active users, VIP users, watches, favorites, referrals, revenue, transactions, reports, and daily signup chart. API: GET /api/stats/monthly
-- **Saweria test endpoint**: Admin-only endpoint POST /api/stats/test-saweria to simulate Saweria webhook payments without real money
-- **Saweria webhook logging**: Added signature verification logging for debugging
-- **Netflix-style UI overhaul**: Dark background (#0a0a0a), red accent (#e50914), gold VIP accents, smooth animations, skeleton loaders
-- **Fixed API 405 errors**: /api/user and /api/referral now accept both GET and POST methods
-- **Enhanced referral system**: Processes referrals from URL params (?ref=ref_xxx) and Telegram start_param. Sends notification to referrer on every successful invite (not just every 3rd).
-- **Two-tier referral system**: 3 friends = 24h access, 10 friends = 2 weeks access, with dual progress bars on profile page
-- **Monthly stats page fix**: Added dedicated stats page with proper navigation instead of broken page-content reference
-- **Mobile responsive fix**: Removed max-width constraint so web app fills full phone screen width
-- **Fixed pricing selection**: Clear visual distinction between selected vs recommended items with proper border/background/shadow states
-- **Page transitions**: Smooth enter/exit animations between pages
-- **Card animations**: Staggered card entrance animations with scale/opacity effects
-- **Modern navigation**: Bottom nav with active indicator animations
+### Deployment
+- Target: Autoscale
+- Run command: `gunicorn --bind=0.0.0.0:5000 --workers=1 --threads=4 --timeout=120 wsgi:app`
+- Development: `python app.py` on port 5000
 
-## Koyeb Deployment
-- Dockerfile ready for Koyeb free tier deployment
-- wsgi.py as gunicorn entry point (auto-starts bot thread + keep-alive)
-- keep_alive.py pings /health every 4 minutes to prevent sleep
-- Health check endpoint at /health
-- Workers: 1 (free tier memory limit), Threads: 4
-- See DEPLOY_KOYEB.md for full deployment instructions
-
-## User Preferences
-- Language: Indonesian (Bahasa Indonesia) for all UI text
-- Netflix-style dark theme: #0a0a0a background, #e50914 red accent, #f5c518 gold VIP
-- Mobile-first design for Telegram Mini App
-- Referral notifications on every successful referral to keep users engaged
+## Recent Changes
+- 2026-02-10: Fixed deployment build errors (removed nodejs-20, vercel-pkg, unnecessary deps)
+- 2026-02-10: Configured gunicorn for production deployment
+- 2026-02-10: Fixed WEBAPP_URL trailing slash issue
+- 2026-02-10: Removed Koyeb-specific files (Dockerfile, start.sh, DEPLOY_KOYEB.md)
+- 2026-02-10: Set separate WEBAPP_URL for dev and production environments
