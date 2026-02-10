@@ -1,4 +1,5 @@
 import os
+import time
 import json
 import asyncio
 import threading
@@ -33,7 +34,7 @@ def add_headers(response):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', cache_bust=int(time.time()))
 
 @app.route('/api/proxy/<path:endpoint>')
 def proxy_api(endpoint):
@@ -242,5 +243,91 @@ def handle_referral():
         cur.close()
         conn.close()
 
+def run_bot():
+    BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not BOT_TOKEN:
+        logger.warning("TELEGRAM_BOT_TOKEN not set. Bot will not start.")
+        return
+
+    from aiogram import Bot, Dispatcher, types as aitypes
+    from aiogram.filters import CommandStart
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+    from aiogram.enums import ParseMode
+
+    WEBAPP_URL = os.environ.get('WEBAPP_URL', '')
+    GROUP_URL = os.environ.get('GROUP_URL', 'https://t.me/dramaboxchannel')
+
+    bot = Bot(token=BOT_TOKEN)
+    dp = Dispatcher()
+
+    @dp.message(CommandStart())
+    async def start_handler(message: aitypes.Message):
+        args = message.text.split()
+        ref_code = args[1] if len(args) > 1 else None
+
+        welcome_text = (
+            "🎬 <b>Welcome to DramaBox!</b>\n\n"
+            "Nikmati ribuan drama China, Korea & Asia lainnya "
+            "langsung dari Telegram!\n\n"
+            "📺 Tap <b>Open App</b> untuk mulai menonton.\n"
+            "💎 Dapatkan poin dengan mengundang teman!"
+        )
+
+        rows = []
+        if WEBAPP_URL:
+            rows.append([InlineKeyboardButton(text="🎬 Open App", web_app=WebAppInfo(url=WEBAPP_URL))])
+        rows.append([InlineKeyboardButton(text="👥 Official Group", url=GROUP_URL)])
+        rows.append([
+            InlineKeyboardButton(text="💎 TopUp", callback_data="topup"),
+            InlineKeyboardButton(text="❓ Help/OSINT", callback_data="help")
+        ])
+        keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
+
+        await message.answer(welcome_text, parse_mode=ParseMode.HTML, reply_markup=keyboard)
+
+        if ref_code and ref_code.startswith('ref_') and WEBAPP_URL:
+            try:
+                import aiohttp as aio
+                async with aio.ClientSession() as session:
+                    await session.post(f"{WEBAPP_URL}/api/referral", json={
+                        "telegram_id": message.from_user.id,
+                        "ref_code": ref_code
+                    })
+            except Exception as e:
+                logger.error(f"Referral error: {e}")
+
+    @dp.callback_query(lambda c: c.data == "topup")
+    async def topup_callback(callback: aitypes.CallbackQuery):
+        text = (
+            "💎 <b>TopUp Points</b>\n\n"
+            "🔹 <b>Lifetime VIP</b> - Akses semua drama selamanya\n"
+            "🔹 <b>1 Year VIP</b> - Akses selama 1 tahun\n\n"
+            "Buka aplikasi untuk melihat detail harga dan upgrade membership."
+        )
+        await callback.message.answer(text, parse_mode=ParseMode.HTML)
+        await callback.answer()
+
+    @dp.callback_query(lambda c: c.data == "help")
+    async def help_callback(callback: aitypes.CallbackQuery):
+        text = (
+            "❓ <b>Help Center</b>\n\n"
+            "Jika kamu mengalami masalah, silakan buka aplikasi "
+            "dan gunakan fitur <b>Help Center</b> di halaman Profile.\n\n"
+            "Atau hubungi admin di grup official kami."
+        )
+        await callback.message.answer(text, parse_mode=ParseMode.HTML)
+        await callback.answer()
+
+    async def bot_main():
+        logger.info("Bot started successfully!")
+        await dp.start_polling(bot, handle_signals=False)
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(bot_main())
+
 if __name__ == '__main__':
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+    logger.info("Starting web server on port 5000...")
     app.run(host='0.0.0.0', port=5000, debug=False)
