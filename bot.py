@@ -53,7 +53,7 @@ async def start_handler(message: types.Message):
         "Nikmati ribuan drama China, Korea & Asia lainnya "
         "langsung dari Telegram!\n\n"
         "📺 Tap <b>Open App</b> untuk mulai menonton.\n"
-        "💎 Dapatkan poin dengan mengundang teman!"
+        "💎 Undang 3 teman = 24 jam, 10 teman = 2 minggu GRATIS!"
     )
 
     rows = []

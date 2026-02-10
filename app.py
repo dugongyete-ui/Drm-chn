@@ -454,11 +454,16 @@ def handle_referral():
                     f"🏆 Total referral: <b>{new_count}</b>\n"
                     f"💰 +100 poin (Total: +{new_count * 100} poin)\n"
                 )
-                if new_count % 3 == 0:
+                if new_count >= 10:
+                    msg += "\n🔓 <b>Selamat! Akses penuh 2 MINGGU telah diaktifkan!</b>"
+                elif new_count % 3 == 0:
                     msg += "\n🔓 <b>Akses penuh 24 jam telah diaktifkan!</b>"
                 else:
-                    remaining = 3 - (new_count % 3)
-                    msg += f"\n📊 {remaining} referral lagi untuk akses 24 jam gratis!"
+                    remaining_3 = 3 - (new_count % 3)
+                    remaining_10 = 10 - new_count
+                    msg += f"\n📊 {remaining_3} referral lagi untuk akses 24 jam gratis!"
+                    if remaining_10 > 0:
+                        msg += f"\n🎯 {remaining_10} referral lagi untuk akses 2 MINGGU!"
 
                 req.post(
                     f"https://api.telegram.org/bot{bot_token}/sendMessage",
@@ -467,7 +472,13 @@ def handle_referral():
             except Exception as e:
                 logger.error(f"Failed to send referral notification: {e}")
 
-        if new_count > 0 and new_count % 3 == 0:
+        if new_count >= 10:
+            expires = datetime.now() + timedelta(days=14)
+            cur.execute("""
+                UPDATE users SET referral_access_expires_at = %s
+                WHERE telegram_id = %s
+            """, (expires, referrer_id))
+        elif new_count > 0 and new_count % 3 == 0:
             expires = datetime.now() + timedelta(hours=24)
             cur.execute("""
                 UPDATE users SET referral_access_expires_at = %s
@@ -499,14 +510,19 @@ def referral_status(telegram_id):
         if expires_at and expires_at > now:
             has_access = True
 
-        next_reward = 3 - (user['referral_count'] % 3) if user['referral_count'] % 3 != 0 else 3
+        count = user['referral_count']
+        next_reward_3 = 3 - (count % 3) if count % 3 != 0 else 3
+        next_reward_10 = max(0, 10 - count)
+        reached_10 = count >= 10
 
         return jsonify({
-            "referral_count": user['referral_count'],
+            "referral_count": count,
             "points": user['points'],
             "has_referral_access": has_access,
             "referral_access_expires_at": expires_at.isoformat() if expires_at else None,
-            "referrals_until_next_reward": next_reward
+            "referrals_until_next_reward": next_reward_3,
+            "referrals_until_2weeks": next_reward_10,
+            "reached_10_referrals": reached_10
         })
     finally:
         cur.close()
@@ -954,7 +970,7 @@ def run_bot():
             "Nikmati ribuan drama China, Korea & Asia lainnya "
             "langsung dari Telegram!\n\n"
             "📺 Tap <b>Buka Aplikasi</b> untuk mulai menonton\n"
-            "💎 Undang 3 teman untuk akses penuh 24 jam GRATIS!\n"
+            "💎 Undang 3 teman = 24 jam, 10 teman = 2 minggu GRATIS!\n"
             "👑 Atau upgrade ke VIP untuk akses tanpa batas\n\n"
             "🎭 <b>Fitur Unggulan:</b>\n"
             "• Streaming drama terbaru\n"

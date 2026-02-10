@@ -151,7 +151,7 @@ function showPage(pageId) {
     setTimeout(() => targetPage.classList.remove('page-enter'), 300);
 
     const nav = document.getElementById('bottom-nav');
-    const hiddenPages = ['search', 'detail', 'player', 'help', 'settings', 'about', 'upgrade'];
+    const hiddenPages = ['search', 'detail', 'player', 'help', 'settings', 'about', 'upgrade', 'stats'];
     nav.style.display = hiddenPages.includes(pageId) ? 'none' : 'flex';
 
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -165,6 +165,7 @@ function showPage(pageId) {
     if (pageId === 'profile') loadProfile();
     if (pageId === 'settings') loadSettings();
     if (pageId === 'upgrade') loadUpgradePage();
+    if (pageId === 'stats') loadMonthlyStats();
     if (pageId === 'search') {
         setTimeout(() => document.getElementById('search-input')?.focus(), 100);
     }
@@ -538,7 +539,7 @@ async function openDrama(bookId, encodedTitle, encodedCover) {
             </div>
             <div class="episodes-section">
                 <h3 class="section-title"><i class="fas fa-list" style="margin-right:8px;color:var(--accent)"></i>Episode (${episodes.length})</h3>
-                ${!canPlayAll && episodes.length > freeLimit ? '<p class="episode-lock-info"><i class="fas fa-lock"></i> Episode 11+ memerlukan VIP atau 3 referral</p>' : ''}
+                ${!canPlayAll && episodes.length > freeLimit ? '<p class="episode-lock-info"><i class="fas fa-lock"></i> Episode 11+ memerlukan VIP atau referral (3 teman = 24 jam, 10 teman = 2 minggu)</p>' : ''}
                 <div class="episode-grid">
                     ${episodes.map((ep, i) => {
                         const epNum = getEpNum(ep, i);
@@ -665,8 +666,8 @@ function showLockedModal() {
                     <div class="locked-option">
                         <i class="fas fa-gift" style="color:#e50914"></i>
                         <div>
-                            <strong>Undang 3 Teman</strong>
-                            <span>Dapatkan akses 24 jam gratis</span>
+                            <strong>Undang 3 Teman = 24 Jam</strong>
+                            <span>Atau 10 teman = akses 2 minggu gratis!</span>
                         </div>
                     </div>
                 </div>
@@ -821,6 +822,9 @@ async function loadProfile() {
     const membershipLabel = userIsAdmin ? 'Admin' : (userData.membership || 'Free');
     const progressPercent = Math.min(100, ((referralData.referral_count % 3) / 3) * 100);
     const referralsNeeded = referralData.referrals_until_next_reward || 3;
+    if (!referralData.referrals_until_2weeks && referralData.referrals_until_2weeks !== 0) {
+        referralData.referrals_until_2weeks = Math.max(0, 10 - (referralData.referral_count || 0));
+    }
 
     let referralAccessHtml = '';
     if (referralData.has_referral_access && referralData.referral_access_expires_at) {
@@ -876,15 +880,24 @@ async function loadProfile() {
                 <i class="fas fa-gift"></i>
                 <h3>Sistem Referral</h3>
             </div>
-            <p class="referral-desc">Undang 3 teman = Akses penuh 24 jam GRATIS!</p>
+            <p class="referral-desc">Undang 3 teman = 24 jam GRATIS! Undang 10 teman = 2 MINGGU GRATIS!</p>
             ${referralAccessHtml}
             <div class="referral-progress">
                 <div class="referral-progress-info">
                     <span>${referralData.referral_count % 3}/3 referral</span>
-                    <span>${referralsNeeded} lagi untuk hadiah</span>
+                    <span>${referralsNeeded} lagi untuk 24 jam</span>
                 </div>
                 <div class="referral-progress-bar">
                     <div class="referral-progress-fill" style="width:${progressPercent}%"></div>
+                </div>
+            </div>
+            <div class="referral-progress" style="margin-top:8px">
+                <div class="referral-progress-info">
+                    <span>${Math.min(referralData.referral_count, 10)}/10 referral</span>
+                    <span>${referralData.referrals_until_2weeks > 0 ? referralData.referrals_until_2weeks + ' lagi untuk 2 minggu' : 'Tercapai!'}</span>
+                </div>
+                <div class="referral-progress-bar">
+                    <div class="referral-progress-fill" style="width:${Math.min(100, (Math.min(referralData.referral_count, 10) / 10) * 100)}%;background:linear-gradient(135deg, #f5c518, #ff6b00)"></div>
                 </div>
             </div>
             <div class="referral-link-box">
@@ -918,18 +931,18 @@ async function loadProfile() {
 }
 
 async function showMonthlyStats() {
-    const container = document.getElementById('page-content');
-    container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Memuat statistik...</p></div>';
+    showPage('stats');
+}
+
+async function loadMonthlyStats() {
+    const container = document.getElementById('stats-content');
+    container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
 
     try {
-        const resp = await fetch(`${API_BASE}/stats/monthly`);
+        const resp = await fetch('/api/stats/monthly');
         const stats = await resp.json();
 
         container.innerHTML = `
-            <div class="page-header">
-                <button class="back-btn" onclick="showPage('profile')"><i class="fas fa-arrow-left"></i></button>
-                <h2>Statistik Bulanan</h2>
-            </div>
             <div class="stats-month-title">
                 <i class="fas fa-calendar-alt"></i> ${stats.month}
             </div>
@@ -1002,7 +1015,7 @@ async function showMonthlyStats() {
             </div>` : ''}
         `;
     } catch (e) {
-        container.innerHTML = '<div class="error-state"><i class="fas fa-exclamation-circle"></i><p>Gagal memuat statistik</p></div>';
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Gagal memuat statistik</p></div>';
     }
 }
 
