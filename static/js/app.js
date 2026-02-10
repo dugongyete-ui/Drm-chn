@@ -628,14 +628,23 @@ async function loadProfile() {
     }
 
     const initial = (userData.first_name || 'G')[0].toUpperCase();
+    const avatarUrl = userData.avatar_url || '';
     const botUsername = 'DramaBoxBot';
     const refLink = `https://t.me/${botUsername}?start=ref_${userData.telegram_id}`;
 
+    const avatarHtml = avatarUrl
+        ? `<img src="${avatarUrl}" alt="Avatar" class="profile-avatar-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+            + `<div class="profile-avatar" style="display:none">${initial}</div>`
+        : `<div class="profile-avatar">${initial}</div>`;
+
     container.innerHTML = `
         <div class="profile-header">
-            <div class="profile-avatar">${initial}</div>
+            <div class="profile-avatar-wrapper">
+                ${avatarHtml}
+            </div>
             <div>
                 <div class="profile-name">${userData.first_name || 'Guest'} ${userData.last_name || ''}</div>
+                <div class="profile-id">@${userData.username || '-'}</div>
                 <div class="profile-id">ID: ${userData.telegram_id || '-'}</div>
             </div>
         </div>

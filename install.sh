@@ -4,22 +4,33 @@ echo "  DramaBox - Auto Install Dependencies"
 echo "========================================="
 echo ""
 
-if ! command -v python3 &> /dev/null; then
-    echo "[ERROR] Python3 not found. Please install Python 3.11+ first."
+PYTHON_CMD=""
+if command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+elif command -v python &> /dev/null; then
+    PYTHON_CMD="python"
+else
+    echo "[ERROR] Python not found. Please install Python 3.11+ first."
     exit 1
 fi
 
-if ! command -v uv &> /dev/null; then
-    echo "[ERROR] uv not found. Please ensure uv is installed."
+PYTHON_VERSION=$($PYTHON_CMD --version 2>&1)
+echo "[INFO] Using $PYTHON_VERSION"
+
+if command -v uv &> /dev/null; then
+    echo "[1/3] Installing Python dependencies with uv..."
+    uv add aiogram aiohttp flask psycopg2-binary gunicorn requests
+elif command -v pip &> /dev/null; then
+    echo "[1/3] Installing Python dependencies with pip..."
+    pip install aiogram aiohttp flask psycopg2-binary gunicorn requests
+else
+    echo "[ERROR] No package manager found (uv or pip). Please install one."
     exit 1
 fi
-
-echo "[1/3] Installing Python dependencies..."
-uv add aiogram aiohttp flask psycopg2-binary gunicorn requests
 echo ""
 
 echo "[2/3] Verifying installations..."
-python3 -c "
+$PYTHON_CMD -c "
 packages = {
     'aiogram': 'aiogram',
     'aiohttp': 'aiohttp',
@@ -69,6 +80,5 @@ echo "========================================="
 echo "  Installation Complete!"
 echo "========================================="
 echo ""
-echo "To run the web app:  python app.py"
-echo "To run the bot:      python bot.py"
+echo "To run the app:  python app.py"
 echo ""

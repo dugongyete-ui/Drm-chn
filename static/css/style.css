@@ -404,6 +404,22 @@ body {
     margin-bottom: 24px;
 }
 
+.profile-avatar-wrapper {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.profile-avatar-img {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    border: 2px solid var(--accent);
+}
+
 .profile-avatar {
     width: 64px;
     height: 64px;

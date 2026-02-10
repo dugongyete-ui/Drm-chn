@@ -21,7 +21,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dramabox-secret-key-202
 DATABASE_URL = os.environ.get('DATABASE_URL')
 API_BASE = 'https://api.sansekai.my.id/api/dramabox'
 SAWERIA_STREAM_KEY = os.environ.get('SAWERIA_STREAM_KEY', '')
-WEBAPP_DOMAIN = 'https://9425d04e-5c62-46c5-8f95-1bc90d78fbd7-00-19gnerjdyj4fo.kirk.replit.dev'
+WEBAPP_DOMAIN = os.environ.get('WEBAPP_URL', f"https://{os.environ.get('REPLIT_DEV_DOMAIN', 'localhost:5000')}")
 
 def get_db():
     conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
@@ -221,6 +221,20 @@ def submit_report():
     except Exception as e:
         conn.rollback()
         return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+@app.route('/api/user/photo/<int:telegram_id>')
+def get_user_photo(telegram_id):
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT avatar_url FROM users WHERE telegram_id = %s", (telegram_id,))
+        user = cur.fetchone()
+        if user and user['avatar_url']:
+            return jsonify({"avatar_url": user['avatar_url']})
+        return jsonify({"avatar_url": ""})
     finally:
         cur.close()
         conn.close()
@@ -471,7 +485,6 @@ def run_bot():
     from aiogram.enums import ParseMode
 
     WEBAPP_URL = os.environ.get('WEBAPP_URL', '')
-    GROUP_URL = os.environ.get('GROUP_URL', 'https://t.me/dramaboxchannel')
 
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
@@ -480,6 +493,30 @@ def run_bot():
     async def start_handler(message: aitypes.Message):
         args = message.text.split()
         ref_code = args[1] if len(args) > 1 else None
+
+        user = message.from_user
+        avatar_url = ''
+        try:
+            photos = await bot.get_user_profile_photos(user.id, limit=1)
+            if photos.total_count > 0:
+                file_info = await bot.get_file(photos.photos[0][-1].file_id)
+                avatar_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
+        except Exception as e:
+            logger.error(f"Failed to get profile photo: {e}")
+
+        if WEBAPP_URL:
+            try:
+                import aiohttp as aio
+                async with aio.ClientSession() as session:
+                    await session.post(f"{WEBAPP_URL}/api/user", json={
+                        "telegram_id": user.id,
+                        "username": user.username or '',
+                        "first_name": user.first_name or '',
+                        "last_name": user.last_name or '',
+                        "avatar_url": avatar_url
+                    })
+            except Exception as e:
+                logger.error(f"User register error: {e}")
 
         welcome_text = (
             "🎬 <b>Welcome to DramaBox!</b>\n\n"
@@ -492,11 +529,6 @@ def run_bot():
         rows = []
         if WEBAPP_URL:
             rows.append([InlineKeyboardButton(text="🎬 Open App", web_app=WebAppInfo(url=WEBAPP_URL))])
-        rows.append([InlineKeyboardButton(text="👥 Official Group", url=GROUP_URL)])
-        rows.append([
-            InlineKeyboardButton(text="💎 TopUp", callback_data="topup"),
-            InlineKeyboardButton(text="❓ Help/OSINT", callback_data="help")
-        ])
         keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
 
         await message.answer(welcome_text, parse_mode=ParseMode.HTML, reply_markup=keyboard)
@@ -506,41 +538,11 @@ def run_bot():
                 import aiohttp as aio
                 async with aio.ClientSession() as session:
                     await session.post(f"{WEBAPP_URL}/api/referral", json={
-                        "telegram_id": message.from_user.id,
+                        "telegram_id": user.id,
                         "ref_code": ref_code
                     })
             except Exception as e:
                 logger.error(f"Referral error: {e}")
-
-    @dp.callback_query(lambda c: c.data == "topup")
-    async def topup_callback(callback: aitypes.CallbackQuery):
-        user_id = callback.from_user.id
-        text = (
-            "💎 <b>TopUp VIP DramaBox</b>\n\n"
-            "Bayar melalui Saweria untuk aktivasi otomatis:\n"
-            "🔗 <b>https://saweria.co/dugongyete</b>\n\n"
-            "📋 <b>PENTING:</b> Masukkan Telegram ID kamu di kolom pesan/message saat donasi.\n"
-            f"Telegram ID kamu: <code>{user_id}</code>\n\n"
-            "💰 <b>Daftar Harga:</b>\n"
-            "├ Rp 5.000+ → 3 Hari VIP\n"
-            "├ Rp 10.000+ → 2 Minggu VIP\n"
-            "├ Rp 35.000+ → 1 Bulan VIP\n"
-            "└ Rp 250.000+ → 1 Tahun VIP\n\n"
-            "⚡ Langganan akan aktif otomatis setelah pembayaran dikonfirmasi."
-        )
-        await callback.message.answer(text, parse_mode=ParseMode.HTML)
-        await callback.answer()
-
-    @dp.callback_query(lambda c: c.data == "help")
-    async def help_callback(callback: aitypes.CallbackQuery):
-        text = (
-            "❓ <b>Help Center</b>\n\n"
-            "Jika kamu mengalami masalah, silakan buka aplikasi "
-            "dan gunakan fitur <b>Help Center</b> di halaman Profile.\n\n"
-            "Atau hubungi admin di grup official kami."
-        )
-        await callback.message.answer(text, parse_mode=ParseMode.HTML)
-        await callback.answer()
 
     async def bot_main():
         logger.info("Bot started successfully!")
