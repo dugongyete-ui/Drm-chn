@@ -1,9 +1,12 @@
 import os
 import time
 import json
+import hmac
+import hashlib
 import asyncio
 import threading
 import logging
+from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, send_from_directory, render_template
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -17,6 +20,8 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dramabox-secret-key-202
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 API_BASE = 'https://api.sansekai.my.id/api/dramabox'
+SAWERIA_STREAM_KEY = os.environ.get('SAWERIA_STREAM_KEY', '')
+WEBAPP_DOMAIN = 'https://9425d04e-5c62-46c5-8f95-1bc90d78fbd7-00-19gnerjdyj4fo.kirk.replit.dev'
 
 def get_db():
     conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
@@ -54,7 +59,7 @@ def upsert_user():
     telegram_id = data.get('telegram_id')
     if not telegram_id:
         return jsonify({"error": "telegram_id required"}), 400
-    
+
     conn = get_db()
     cur = conn.cursor()
     try:
@@ -176,6 +181,21 @@ def get_history(telegram_id):
         cur.close()
         conn.close()
 
+@app.route('/api/history/<int:telegram_id>', methods=['DELETE'])
+def clear_history(telegram_id):
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM watch_history WHERE telegram_id = %s", (telegram_id,))
+        conn.commit()
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
 @app.route('/api/report', methods=['POST'])
 def submit_report():
     data = request.json
@@ -243,6 +263,202 @@ def handle_referral():
         cur.close()
         conn.close()
 
+@app.route('/api/subscription/check/<int:telegram_id>')
+def check_subscription(telegram_id):
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT membership, membership_expires_at FROM users WHERE telegram_id = %s", (telegram_id,))
+        user = cur.fetchone()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        membership = user['membership'] or 'Free'
+        expires_at = user['membership_expires_at']
+        is_active = False
+
+        if membership == 'VIP':
+            if expires_at is None:
+                is_active = True
+            elif expires_at > datetime.now():
+                is_active = True
+            else:
+                cur.execute("UPDATE users SET membership = 'Free', membership_expires_at = NULL WHERE telegram_id = %s", (telegram_id,))
+                conn.commit()
+                membership = 'Free'
+                expires_at = None
+
+        return jsonify({
+            "telegram_id": telegram_id,
+            "membership": membership,
+            "is_active": is_active,
+            "expires_at": expires_at.isoformat() if expires_at else None
+        })
+    finally:
+        cur.close()
+        conn.close()
+
+@app.route('/api/settings/<int:telegram_id>', methods=['GET'])
+def get_settings(telegram_id):
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT language, notifications_enabled FROM users WHERE telegram_id = %s", (telegram_id,))
+        user = cur.fetchone()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        return jsonify(dict(user))
+    finally:
+        cur.close()
+        conn.close()
+
+@app.route('/api/settings/<int:telegram_id>', methods=['PUT'])
+def update_settings(telegram_id):
+    data = request.json
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        updates = []
+        values = []
+        if 'language' in data:
+            updates.append("language = %s")
+            values.append(data['language'])
+        if 'notifications_enabled' in data:
+            updates.append("notifications_enabled = %s")
+            values.append(data['notifications_enabled'])
+
+        if not updates:
+            return jsonify({"error": "No valid fields to update"}), 400
+
+        values.append(telegram_id)
+        cur.execute(f"UPDATE users SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = %s RETURNING language, notifications_enabled", values)
+        user = cur.fetchone()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        conn.commit()
+        return jsonify(dict(user))
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+def determine_plan(amount):
+    if amount >= 150000:
+        return "Lifetime VIP", None
+    elif amount >= 85000:
+        return "1 Year VIP", timedelta(days=365)
+    elif amount >= 50000:
+        return "6 Months VIP", timedelta(days=180)
+    elif amount >= 15000:
+        return "1 Month VIP", timedelta(days=30)
+    return None, None
+
+def send_telegram_notification(telegram_id, text):
+    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not bot_token:
+        return
+    try:
+        import requests as req
+        req.post(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            json={"chat_id": telegram_id, "text": text, "parse_mode": "HTML"}
+        )
+    except Exception as e:
+        logger.error(f"Failed to send Telegram notification: {e}")
+
+@app.route('/webhook/saweria', methods=['POST'])
+def saweria_webhook():
+    signature = request.headers.get('Saweria-Callback-Signature', '')
+    raw_body = request.get_data()
+
+    if SAWERIA_STREAM_KEY:
+        expected_sig = hmac.new(
+            SAWERIA_STREAM_KEY.encode('utf-8'),
+            raw_body,
+            hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(signature, expected_sig):
+            logger.warning("Saweria webhook signature mismatch")
+            return jsonify({"error": "Invalid signature"}), 403
+
+    data = request.json
+    if not data:
+        return jsonify({"error": "No data"}), 400
+
+    transaction_id = data.get('id', '')
+    amount = int(data.get('amount_raw', 0))
+    donator_name = data.get('donator_name', '')
+    donator_email = data.get('donator_email', '')
+    message = data.get('message', '').strip()
+    created_at = data.get('created_at', '')
+
+    try:
+        telegram_id = int(message)
+    except (ValueError, TypeError):
+        logger.warning(f"Saweria webhook: invalid telegram_id in message: {message}")
+        return jsonify({"error": "Invalid telegram_id in message"}), 400
+
+    plan_type, duration = determine_plan(amount)
+    if not plan_type:
+        logger.info(f"Saweria payment amount {amount} too low for any plan")
+        return jsonify({"error": "Amount too low for any plan"}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM subscriptions WHERE saweria_transaction_id = %s", (transaction_id,))
+        if cur.fetchone():
+            return jsonify({"status": "already_processed"})
+
+        now = datetime.now()
+        expires_at = (now + duration) if duration else None
+
+        cur.execute("""
+            INSERT INTO subscriptions (telegram_id, saweria_transaction_id, plan_type, amount, donator_name, donator_email, status, activated_at, expires_at)
+            VALUES (%s, %s, %s, %s, %s, %s, 'active', %s, %s)
+            RETURNING *
+        """, (telegram_id, transaction_id, plan_type, amount, donator_name, donator_email, now, expires_at))
+
+        cur.execute("""
+            UPDATE users SET membership = 'VIP', membership_expires_at = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE telegram_id = %s
+        """, (expires_at, telegram_id))
+
+        conn.commit()
+
+        expires_text = expires_at.strftime('%d %B %Y') if expires_at else 'Selamanya (Lifetime)'
+        notification = (
+            "✅ <b>Pembayaran Berhasil!</b>\n\n"
+            f"💎 Plan: <b>{plan_type}</b>\n"
+            f"💰 Jumlah: Rp {amount:,}\n"
+            f"📅 Berlaku sampai: <b>{expires_text}</b>\n\n"
+            "Terima kasih telah berlangganan DramaBox VIP! 🎬"
+        )
+        send_telegram_notification(telegram_id, notification)
+
+        admin_id = os.environ.get('TELEGRAM_ADMIN_ID')
+        if admin_id:
+            admin_msg = (
+                f"💰 <b>New Payment</b>\n"
+                f"User: {telegram_id}\n"
+                f"Plan: {plan_type}\n"
+                f"Amount: Rp {amount:,}\n"
+                f"Donator: {donator_name}"
+            )
+            send_telegram_notification(int(admin_id), admin_msg)
+
+        return jsonify({"status": "ok", "plan": plan_type})
+
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Saweria webhook error: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
 def run_bot():
     BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
     if not BOT_TOKEN:
@@ -298,11 +514,19 @@ def run_bot():
 
     @dp.callback_query(lambda c: c.data == "topup")
     async def topup_callback(callback: aitypes.CallbackQuery):
+        user_id = callback.from_user.id
         text = (
-            "💎 <b>TopUp Points</b>\n\n"
-            "🔹 <b>Lifetime VIP</b> - Akses semua drama selamanya\n"
-            "🔹 <b>1 Year VIP</b> - Akses selama 1 tahun\n\n"
-            "Buka aplikasi untuk melihat detail harga dan upgrade membership."
+            "💎 <b>TopUp VIP DramaBox</b>\n\n"
+            "Bayar melalui Saweria untuk aktivasi otomatis:\n"
+            "🔗 <b>https://saweria.co/dugongyete</b>\n\n"
+            "📋 <b>PENTING:</b> Masukkan Telegram ID kamu di kolom pesan/message saat donasi.\n"
+            f"Telegram ID kamu: <code>{user_id}</code>\n\n"
+            "💰 <b>Daftar Harga:</b>\n"
+            "├ Rp 15.000+ → 1 Bulan VIP\n"
+            "├ Rp 50.000+ → 6 Bulan VIP\n"
+            "├ Rp 85.000+ → 1 Tahun VIP\n"
+            "└ Rp 150.000+ → Lifetime VIP\n\n"
+            "⚡ Langganan akan aktif otomatis setelah pembayaran dikonfirmasi."
         )
         await callback.message.answer(text, parse_mode=ParseMode.HTML)
         await callback.answer()

@@ -115,6 +115,116 @@
             </div>
         </div>
 
+        <div id="page-settings" class="page">
+            <div class="header">
+                <button class="btn-icon" onclick="showPage('profile')"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="header-title">Settings</h2>
+            </div>
+            <div class="settings-content" id="settings-content">
+                <div class="loading-spinner"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <div id="page-about" class="page">
+            <div class="header">
+                <button class="btn-icon" onclick="showPage('profile')"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="header-title">About</h2>
+            </div>
+            <div class="about-content">
+                <div class="about-logo">
+                    <div class="about-icon"><i class="fas fa-play-circle"></i></div>
+                    <h2>DramaBox</h2>
+                    <p class="about-version">Version 2.0.0</p>
+                </div>
+                <div class="about-section">
+                    <h3>Tentang Aplikasi</h3>
+                    <p>DramaBox adalah platform streaming drama China, Korea & Asia lainnya langsung dari Telegram. Nikmati ribuan episode drama favorit kamu dengan kualitas terbaik.</p>
+                </div>
+                <div class="about-section">
+                    <h3>Fitur Utama</h3>
+                    <div class="feature-list">
+                        <div class="feature-item"><i class="fas fa-film"></i><span>Ribuan drama China & Asia</span></div>
+                        <div class="feature-item"><i class="fas fa-search"></i><span>Pencarian real-time</span></div>
+                        <div class="feature-item"><i class="fas fa-heart"></i><span>Simpan favorit</span></div>
+                        <div class="feature-item"><i class="fas fa-history"></i><span>Riwayat tontonan</span></div>
+                        <div class="feature-item"><i class="fas fa-crown"></i><span>VIP membership</span></div>
+                        <div class="feature-item"><i class="fas fa-share-alt"></i><span>Sistem referral</span></div>
+                    </div>
+                </div>
+                <div class="about-section">
+                    <h3>Kontak</h3>
+                    <p>Jika ada pertanyaan atau masalah, silakan hubungi kami melalui Help Center atau Official Group.</p>
+                </div>
+                <div class="about-footer">
+                    <p>&copy; 2026 DramaBox. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-upgrade" class="page">
+            <div class="header">
+                <button class="btn-icon" onclick="showPage('profile')"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="header-title">Upgrade VIP</h2>
+            </div>
+            <div class="upgrade-content" id="upgrade-content">
+                <div class="upgrade-hero">
+                    <div class="upgrade-icon"><i class="fas fa-crown"></i></div>
+                    <h2>Upgrade ke VIP</h2>
+                    <p>Akses semua drama tanpa batas!</p>
+                </div>
+                <div class="upgrade-status" id="upgrade-status"></div>
+                <div class="pricing-list">
+                    <div class="pricing-item" onclick="selectPlan(this, '1month')">
+                        <div class="pricing-item-left">
+                            <div class="pricing-item-name">1 Bulan</div>
+                            <div class="pricing-item-desc">Akses VIP selama 30 hari</div>
+                        </div>
+                        <div class="pricing-item-price">Rp 15.000</div>
+                    </div>
+                    <div class="pricing-item" onclick="selectPlan(this, '6month')">
+                        <div class="pricing-item-left">
+                            <div class="pricing-item-name">6 Bulan</div>
+                            <div class="pricing-item-desc">Hemat 44% - Rp 8.333/bulan</div>
+                        </div>
+                        <div class="pricing-item-price">Rp 50.000</div>
+                    </div>
+                    <div class="pricing-item recommended" onclick="selectPlan(this, '1year')">
+                        <div class="pricing-badge">Populer</div>
+                        <div class="pricing-item-left">
+                            <div class="pricing-item-name">1 Tahun</div>
+                            <div class="pricing-item-desc">Hemat 53% - Rp 7.083/bulan</div>
+                        </div>
+                        <div class="pricing-item-price">Rp 85.000</div>
+                    </div>
+                    <div class="pricing-item" onclick="selectPlan(this, 'lifetime')">
+                        <div class="pricing-item-left">
+                            <div class="pricing-item-name">Lifetime</div>
+                            <div class="pricing-item-desc">Akses VIP selamanya!</div>
+                        </div>
+                        <div class="pricing-item-price">Rp 150.000</div>
+                    </div>
+                </div>
+                <div class="payment-info">
+                    <h3><i class="fas fa-info-circle"></i> Cara Pembayaran</h3>
+                    <ol>
+                        <li>Pilih paket di atas</li>
+                        <li>Klik tombol "Bayar via Saweria"</li>
+                        <li>Masukkan <strong>Telegram ID kamu</strong> di kolom pesan</li>
+                        <li>Selesaikan pembayaran</li>
+                        <li>VIP otomatis aktif dalam beberapa detik!</li>
+                    </ol>
+                    <div class="user-id-box" id="user-id-box">
+                        <span>Telegram ID kamu:</span>
+                        <strong id="user-tg-id">-</strong>
+                        <button class="btn-copy-small" onclick="copyTelegramId()"><i class="fas fa-copy"></i></button>
+                    </div>
+                </div>
+                <a href="https://saweria.co/dugongyete" target="_blank" class="btn-saweria" id="btn-saweria">
+                    <i class="fas fa-wallet"></i> Bayar via Saweria
+                </a>
+            </div>
+        </div>
+
         <nav class="bottom-nav" id="bottom-nav">
             <button class="nav-item active" onclick="showPage('home')">
                 <i class="fas fa-home"></i>

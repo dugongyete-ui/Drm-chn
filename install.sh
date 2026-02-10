@@ -9,8 +9,13 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
+if ! command -v uv &> /dev/null; then
+    echo "[ERROR] uv not found. Please ensure uv is installed."
+    exit 1
+fi
+
 echo "[1/3] Installing Python dependencies..."
-pip install aiogram aiohttp flask psycopg2-binary gunicorn requests
+uv add aiogram aiohttp flask psycopg2-binary gunicorn requests
 echo ""
 
 echo "[2/3] Verifying installations..."
@@ -49,6 +54,10 @@ if [ -z "$DATABASE_URL" ]; then
 fi
 if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
     echo "  [WARN] TELEGRAM_BOT_TOKEN not set - Bot won't start"
+    missing=1
+fi
+if [ -z "$SAWERIA_STREAM_KEY" ]; then
+    echo "  [WARN] SAWERIA_STREAM_KEY not set - Saweria webhook verification disabled"
     missing=1
 fi
 if [ $missing -eq 0 ]; then

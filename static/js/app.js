@@ -88,7 +88,7 @@ function showPage(pageId) {
     document.getElementById('page-' + pageId).classList.add('active');
 
     const nav = document.getElementById('bottom-nav');
-    const hiddenPages = ['search', 'detail', 'player', 'help'];
+    const hiddenPages = ['search', 'detail', 'player', 'help', 'settings', 'about', 'upgrade'];
     nav.style.display = hiddenPages.includes(pageId) ? 'none' : 'flex';
 
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -100,6 +100,8 @@ function showPage(pageId) {
     if (pageId === 'search') loadSearchSuggestions();
     if (pageId === 'library') loadLibraryContent();
     if (pageId === 'profile') loadProfile();
+    if (pageId === 'settings') loadSettings();
+    if (pageId === 'upgrade') loadUpgradePage();
     if (pageId === 'search') {
         setTimeout(() => document.getElementById('search-input')?.focus(), 100);
     }
@@ -658,7 +660,7 @@ async function loadProfile() {
                 <span>Membership</span>
                 <span class="membership-badge ${userData.membership === 'VIP' ? 'vip' : ''}">${userData.membership || 'Free'} Member</span>
             </div>
-            <button class="btn-primary btn-full" onclick="showToast('Coming soon!')">
+            <button class="btn-primary btn-full" onclick="showPage('upgrade')">
                 <i class="fas fa-crown"></i> Upgrade to VIP
             </button>
         </div>
@@ -691,12 +693,12 @@ async function loadProfile() {
                 <span>Help Center</span>
                 <i class="fas fa-chevron-right chevron"></i>
             </div>
-            <div class="menu-item" onclick="showToast('Coming soon!')">
+            <div class="menu-item" onclick="showPage('settings')">
                 <i class="fas fa-cog"></i>
                 <span>Settings</span>
                 <i class="fas fa-chevron-right chevron"></i>
             </div>
-            <div class="menu-item" onclick="showToast('Coming soon!')">
+            <div class="menu-item" onclick="showPage('about')">
                 <i class="fas fa-info-circle"></i>
                 <span>About</span>
                 <i class="fas fa-chevron-right chevron"></i>
@@ -784,6 +786,144 @@ function showToast(msg) {
     toast.textContent = msg;
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+async function loadSettings() {
+    const container = document.getElementById('settings-content');
+    if (!currentUser.telegram_id) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-user-lock"></i><p>Login via Telegram untuk mengakses pengaturan</p></div>';
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/api/settings/${currentUser.telegram_id}`);
+        const settings = await resp.json();
+
+        container.innerHTML = `
+            <div class="settings-group">
+                <h3 class="settings-group-title">Umum</h3>
+                <div class="settings-item">
+                    <div class="settings-item-info">
+                        <i class="fas fa-globe"></i>
+                        <div>
+                            <div class="settings-item-name">Bahasa</div>
+                            <div class="settings-item-desc">Pilih bahasa aplikasi</div>
+                        </div>
+                    </div>
+                    <select class="settings-select" id="setting-language" onchange="updateSetting('language', this.value)">
+                        <option value="id" ${settings.language === 'id' ? 'selected' : ''}>Indonesia</option>
+                        <option value="en" ${settings.language === 'en' ? 'selected' : ''}>English</option>
+                    </select>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-item-info">
+                        <i class="fas fa-bell"></i>
+                        <div>
+                            <div class="settings-item-name">Notifikasi</div>
+                            <div class="settings-item-desc">Aktifkan notifikasi push</div>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="setting-notifications" ${settings.notifications_enabled ? 'checked' : ''} onchange="updateSetting('notifications_enabled', this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="settings-group">
+                <h3 class="settings-group-title">Data</h3>
+                <div class="settings-item clickable" onclick="clearWatchHistory()">
+                    <div class="settings-item-info">
+                        <i class="fas fa-trash-alt" style="color:var(--danger)"></i>
+                        <div>
+                            <div class="settings-item-name" style="color:var(--danger)">Hapus Riwayat Tontonan</div>
+                            <div class="settings-item-desc">Hapus semua riwayat menonton drama</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color:var(--text-muted)"></i>
+                </div>
+            </div>
+            <div class="settings-group">
+                <h3 class="settings-group-title">Akun</h3>
+                <div class="settings-item">
+                    <div class="settings-item-info">
+                        <i class="fas fa-id-badge"></i>
+                        <div>
+                            <div class="settings-item-name">Telegram ID</div>
+                            <div class="settings-item-desc">${currentUser.telegram_id}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-item-info">
+                        <i class="fas fa-crown"></i>
+                        <div>
+                            <div class="settings-item-name">Membership</div>
+                            <div class="settings-item-desc">${settings.membership || 'Free'}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    } catch (e) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Gagal memuat pengaturan</p></div>';
+    }
+}
+
+async function updateSetting(key, value) {
+    try {
+        await fetch(`/api/settings/${currentUser.telegram_id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [key]: value })
+        });
+        showToast('Pengaturan disimpan!');
+    } catch {
+        showToast('Gagal menyimpan pengaturan');
+    }
+}
+
+async function clearWatchHistory() {
+    if (!confirm('Yakin ingin menghapus semua riwayat tontonan?')) return;
+    try {
+        await fetch(`/api/history/${currentUser.telegram_id}`, {
+            method: 'DELETE'
+        });
+        showToast('Riwayat tontonan dihapus!');
+    } catch {
+        showToast('Gagal menghapus riwayat');
+    }
+}
+
+function selectPlan(el, plan) {
+    document.querySelectorAll('.pricing-item').forEach(p => p.classList.remove('selected'));
+    el.classList.add('selected');
+}
+
+function copyTelegramId() {
+    const id = currentUser.telegram_id;
+    if (!id) return;
+    navigator.clipboard.writeText(String(id)).then(() => {
+        showToast('Telegram ID disalin!');
+    }).catch(() => {
+        const textarea = document.createElement('textarea');
+        textarea.value = String(id);
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('Telegram ID disalin!');
+    });
+}
+
+function loadUpgradePage() {
+    const idEl = document.getElementById('user-tg-id');
+    if (idEl) idEl.textContent = currentUser.telegram_id || '-';
+
+    const statusEl = document.getElementById('upgrade-status');
+    if (statusEl && currentUser.membership === 'VIP') {
+        statusEl.innerHTML = '<div class="vip-active-badge"><i class="fas fa-check-circle"></i> Kamu sudah VIP Member!</div>';
+    } else if (statusEl) {
+        statusEl.innerHTML = '';
+    }
 }
 
 document.addEventListener('DOMContentLoaded', initApp);

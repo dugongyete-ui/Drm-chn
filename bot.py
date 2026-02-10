@@ -32,39 +32,19 @@ async def start_handler(message: types.Message):
         "💎 Dapatkan poin dengan mengundang teman!"
     )
 
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text="🎬 Open App",
-            web_app=WebAppInfo(url=WEBAPP_URL) if WEBAPP_URL else None
-        )] if WEBAPP_URL else [],
-        [InlineKeyboardButton(text="👥 Official Group", url=GROUP_URL)],
-        [
-            InlineKeyboardButton(text="💎 TopUp", callback_data="topup"),
-            InlineKeyboardButton(text="❓ Help/OSINT", callback_data="help")
-        ]
-    ])
-
+    rows = []
     if WEBAPP_URL:
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🎬 Open App", web_app=WebAppInfo(url=WEBAPP_URL))],
-            [InlineKeyboardButton(text="👥 Official Group", url=GROUP_URL)],
-            [
-                InlineKeyboardButton(text="💎 TopUp", callback_data="topup"),
-                InlineKeyboardButton(text="❓ Help/OSINT", callback_data="help")
-            ]
-        ])
-    else:
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="👥 Official Group", url=GROUP_URL)],
-            [
-                InlineKeyboardButton(text="💎 TopUp", callback_data="topup"),
-                InlineKeyboardButton(text="❓ Help/OSINT", callback_data="help")
-            ]
-        ])
+        rows.append([InlineKeyboardButton(text="🎬 Open App", web_app=WebAppInfo(url=WEBAPP_URL))])
+    rows.append([InlineKeyboardButton(text="👥 Official Group", url=GROUP_URL)])
+    rows.append([
+        InlineKeyboardButton(text="💎 TopUp", callback_data="topup"),
+        InlineKeyboardButton(text="❓ Help/OSINT", callback_data="help")
+    ])
+    keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
 
     await message.answer(welcome_text, parse_mode=ParseMode.HTML, reply_markup=keyboard)
 
-    if ref_code and ref_code.startswith('ref_'):
+    if ref_code and ref_code.startswith('ref_') and WEBAPP_URL:
         try:
             import aiohttp
             async with aiohttp.ClientSession() as session:
@@ -77,11 +57,19 @@ async def start_handler(message: types.Message):
 
 @dp.callback_query(lambda c: c.data == "topup")
 async def topup_callback(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
     text = (
-        "💎 <b>TopUp Points</b>\n\n"
-        "🔹 <b>Lifetime VIP</b> - Akses semua drama selamanya\n"
-        "🔹 <b>1 Year VIP</b> - Akses selama 1 tahun\n\n"
-        "Buka aplikasi untuk melihat detail harga dan upgrade membership."
+        "💎 <b>TopUp VIP DramaBox</b>\n\n"
+        "Bayar melalui Saweria untuk aktivasi otomatis:\n"
+        "🔗 <b>https://saweria.co/dugongyete</b>\n\n"
+        "📋 <b>PENTING:</b> Masukkan Telegram ID kamu di kolom pesan/message saat donasi.\n"
+        f"Telegram ID kamu: <code>{user_id}</code>\n\n"
+        "💰 <b>Daftar Harga:</b>\n"
+        "├ Rp 15.000+ → 1 Bulan VIP\n"
+        "├ Rp 50.000+ → 6 Bulan VIP\n"
+        "├ Rp 85.000+ → 1 Tahun VIP\n"
+        "└ Rp 150.000+ → Lifetime VIP\n\n"
+        "⚡ Langganan akan aktif otomatis setelah pembayaran dikonfirmasi."
     )
     await callback.message.answer(text, parse_mode=ParseMode.HTML)
     await callback.answer()

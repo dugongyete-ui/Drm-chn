@@ -42,4 +42,4 @@ run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "--workers=1", "--thre
 [userenv]
 
 [userenv.shared]
-WEBAPP_URL = ""
+WEBAPP_URL = "https://9425d04e-5c62-46c5-8f95-1bc90d78fbd7-00-19gnerjdyj4fo.kirk.replit.dev/"
