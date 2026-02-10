@@ -19,12 +19,17 @@ let userHasFullAccess = false;
 
 const tg = window.Telegram?.WebApp;
 
+function getUrlParam(name) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+}
+
 function initApp() {
     if (tg) {
         tg.ready();
         tg.expand();
-        tg.setHeaderColor('#0b1426');
-        tg.setBackgroundColor('#0b1426');
+        tg.setHeaderColor('#0a0a0a');
+        tg.setBackgroundColor('#0a0a0a');
 
         const user = tg.initDataUnsafe?.user;
         if (user) {
@@ -67,19 +72,28 @@ async function registerUser() {
 
         await checkUserAccess();
 
-        const startParam = tg?.initDataUnsafe?.start_param;
-        if (startParam && startParam.startsWith('ref_')) {
+        let refCode = tg?.initDataUnsafe?.start_param;
+        if (!refCode) {
+            const urlRef = getUrlParam('ref');
+            if (urlRef && urlRef.startsWith('ref_')) {
+                refCode = urlRef;
+            }
+        }
+
+        if (refCode && refCode.startsWith('ref_')) {
             const refResp = await fetch('/api/referral', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     telegram_id: currentUser.telegram_id,
-                    ref_code: startParam
+                    ref_code: refCode
                 })
             });
             const refData = await refResp.json();
             if (refData.status === 'ok') {
-                showToast('Referral berhasil diterapkan!');
+                showToast('Referral berhasil! Selamat bergabung!', 'success');
+            } else if (refData.status === 'already_referred') {
+                showToast('Kamu sudah terdaftar melalui referral', 'info');
             }
         }
     } catch (e) {
@@ -121,8 +135,17 @@ function showPage(pageId) {
         previousPage = 'home';
     }
 
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById('page-' + pageId).classList.add('active');
+    document.querySelectorAll('.page').forEach(p => {
+        if (p.classList.contains('active')) {
+            p.classList.add('page-exit');
+            p.classList.remove('active');
+            setTimeout(() => p.classList.remove('page-exit'), 300);
+        }
+    });
+
+    const targetPage = document.getElementById('page-' + pageId);
+    targetPage.classList.add('active', 'page-enter');
+    setTimeout(() => targetPage.classList.remove('page-enter'), 300);
 
     const nav = document.getElementById('bottom-nav');
     const hiddenPages = ['search', 'detail', 'player', 'help', 'settings', 'about', 'upgrade'];
@@ -142,6 +165,8 @@ function showPage(pageId) {
     if (pageId === 'search') {
         setTimeout(() => document.getElementById('search-input')?.focus(), 100);
     }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function goBackFromDetail() {
@@ -160,7 +185,7 @@ async function loadHomeContent(tab, append) {
 
     const container = document.getElementById('home-content');
     if (!append) {
-        container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+        container.innerHTML = renderSkeletonGrid(9);
     } else {
         removeLoadMore('home');
         appendLoadingIndicator(container);
@@ -212,7 +237,7 @@ async function loadHomeContent(tab, append) {
                 grid.insertAdjacentHTML('beforeend', items.map((item, i) => renderDramaCard(item, startIdx + i)).join(''));
             }
         } else {
-            container.innerHTML = '<div class="content-grid" style="padding:0;">' +
+            container.innerHTML = '<div class="content-grid">' +
                 items.map((item, i) => renderDramaCard(item, i)).join('') +
                 '</div>';
         }
@@ -228,6 +253,18 @@ async function loadHomeContent(tab, append) {
         if (!append) container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Gagal memuat: ' + e.message + '</p></div>';
     }
     homeLoading = false;
+}
+
+function renderSkeletonGrid(count) {
+    let html = '<div class="content-grid">';
+    for (let i = 0; i < count; i++) {
+        html += `<div class="skeleton-card" style="animation-delay:${i * 0.05}s">
+            <div class="skeleton skeleton-img"></div>
+            <div class="skeleton skeleton-text"></div>
+        </div>`;
+    }
+    html += '</div>';
+    return html;
 }
 
 function extractItems(data) {
@@ -248,7 +285,7 @@ function appendLoadMoreButton(container, type) {
     btn.setAttribute('data-loadmore', type);
     btn.innerHTML = '<button class="btn-load-more" onclick="' +
         (type === 'home' ? 'loadHomeContent(currentTab, true)' : 'loadMoreSearch()') +
-        '"><i class="fas fa-arrow-down"></i> Muat Lagi</button>';
+        '"><i class="fas fa-plus"></i> Muat Lagi</button>';
     container.appendChild(btn);
 }
 
@@ -274,8 +311,13 @@ function renderDramaCard(item, index) {
     const title = item.bookName || item.name || item.title || 'Tidak diketahui';
     const cover = item.coverWap || item.cover || item.coverUrl || item.image || '';
 
-    return `<div class="drama-card" style="animation-delay:${index * 0.05}s" onclick="openDrama('${id}', '${encodeURIComponent(title)}', '${encodeURIComponent(cover)}')">
-        <img src="${cover}" alt="${title}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 400%22><rect fill=%22%231a2332%22 width=%22300%22 height=%22400%22/><text fill=%22%2364748b%22 x=%22150%22 y=%22200%22 text-anchor=%22middle%22 font-size=%2214%22>No Image</text></svg>'">
+    return `<div class="drama-card" style="animation-delay:${index * 0.04}s" onclick="openDrama('${id}', '${encodeURIComponent(title)}', '${encodeURIComponent(cover)}')">
+        <div class="card-img-wrapper">
+            <img src="${cover}" alt="${title}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 400%22><rect fill=%22%23141414%22 width=%22300%22 height=%22400%22/><text fill=%22%23444%22 x=%22150%22 y=%22200%22 text-anchor=%22middle%22 font-size=%2214%22>No Image</text></svg>'">
+            <div class="card-overlay">
+                <i class="fas fa-play"></i>
+            </div>
+        </div>
         <div class="card-title">${title}</div>
     </div>`;
 }
@@ -305,11 +347,11 @@ async function loadSearchSuggestions() {
 
         if (keywords.length > 0) {
             container.innerHTML = `
-                <div class="suggestion-title">Pencarian Populer</div>
+                <div class="suggestion-title"><i class="fas fa-fire" style="color:#e50914;margin-right:8px"></i>Pencarian Populer</div>
                 <div class="suggestion-tags">
-                    ${keywords.map(k => {
+                    ${keywords.map((k, i) => {
                         const word = typeof k === 'string' ? k : (k.keyword || k.name || k.word || '');
-                        return `<span class="suggestion-tag" onclick="searchFor('${word}')">${word}</span>`;
+                        return `<span class="suggestion-tag" style="animation-delay:${i * 0.03}s" onclick="searchFor('${word}')">${word}</span>`;
                     }).join('')}
                 </div>`;
         }
@@ -345,7 +387,7 @@ async function doSearch(query, append) {
 
     const container = document.getElementById('search-results');
     if (!append) {
-        container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+        container.innerHTML = renderSkeletonGrid(6);
     } else {
         removeLoadMore('search');
         appendLoadingIndicator(container);
@@ -372,14 +414,13 @@ async function doSearch(query, append) {
 
         if (append) {
             removeLoadingIndicator(container);
-            const startIdx = container.querySelectorAll('.drama-card').length;
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = items.map((item, i) => renderDramaCard(item, startIdx + i)).join('');
-            while (wrapper.firstChild) {
-                container.insertBefore(wrapper.firstChild, container.querySelector('[data-loadmore]'));
+            const grid = container.querySelector('.content-grid');
+            if (grid) {
+                const startIdx = grid.children.length;
+                grid.insertAdjacentHTML('beforeend', items.map((item, i) => renderDramaCard(item, startIdx + i)).join(''));
             }
         } else {
-            container.innerHTML = items.map((item, i) => renderDramaCard(item, i)).join('');
+            container.innerHTML = '<div class="content-grid">' + items.map((item, i) => renderDramaCard(item, i)).join('') + '</div>';
         }
 
         searchPage++;
@@ -408,7 +449,15 @@ async function openDrama(bookId, encodedTitle, encodedCover) {
     showPage('detail');
 
     const container = document.getElementById('detail-content');
-    container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+    container.innerHTML = `<div class="detail-skeleton">
+        <div class="skeleton" style="width:100%;height:300px;border-radius:0"></div>
+        <div style="padding:20px">
+            <div class="skeleton" style="width:70%;height:24px;margin-bottom:12px"></div>
+            <div class="skeleton" style="width:100%;height:14px;margin-bottom:8px"></div>
+            <div class="skeleton" style="width:90%;height:14px;margin-bottom:8px"></div>
+            <div class="skeleton" style="width:60%;height:14px"></div>
+        </div>
+    </div>`;
 
     try {
         const [detailResp, episodesResp] = await Promise.all([
@@ -459,7 +508,7 @@ async function openDrama(bookId, encodedTitle, encodedCover) {
 
         const isFav = await checkFavorite(bookId);
         const favBtn = document.getElementById('btn-fav');
-        favBtn.innerHTML = isFav ? '<i class="fas fa-heart" style="color:#ef4444"></i>' : '<i class="far fa-heart"></i>';
+        favBtn.innerHTML = isFav ? '<i class="fas fa-heart" style="color:#e50914"></i>' : '<i class="far fa-heart"></i>';
 
         let tagsHtml = '';
         if (currentDrama.tags && currentDrama.tags.length > 0) {
@@ -474,15 +523,18 @@ async function openDrama(bookId, encodedTitle, encodedCover) {
         const freeLimit = 10;
 
         container.innerHTML = `
-            <img class="detail-cover" src="${currentDrama.cover}" alt="${currentDrama.title}" onerror="this.style.display='none'">
+            <div class="detail-hero">
+                <img class="detail-cover" src="${currentDrama.cover}" alt="${currentDrama.title}" onerror="this.style.display='none'">
+                <div class="detail-cover-gradient"></div>
+            </div>
             <div class="detail-info">
                 <h2 class="detail-title">${currentDrama.title}</h2>
                 ${tagsHtml}
                 <p class="detail-synopsis collapsed" id="synopsis-text">${currentDrama.synopsis}</p>
-                <button class="btn-expand" onclick="toggleSynopsis()">Selengkapnya</button>
+                <button class="btn-expand" onclick="toggleSynopsis()"><i class="fas fa-chevron-down"></i> Selengkapnya</button>
             </div>
             <div class="episodes-section">
-                <h3 class="section-title">Episode (${episodes.length})</h3>
+                <h3 class="section-title"><i class="fas fa-list" style="margin-right:8px;color:var(--accent)"></i>Episode (${episodes.length})</h3>
                 ${!canPlayAll && episodes.length > freeLimit ? '<p class="episode-lock-info"><i class="fas fa-lock"></i> Episode 11+ memerlukan VIP atau 3 referral</p>' : ''}
                 <div class="episode-grid">
                     ${episodes.map((ep, i) => {
@@ -505,10 +557,10 @@ function toggleSynopsis() {
     const btn = el.nextElementSibling;
     if (el.classList.contains('collapsed')) {
         el.classList.remove('collapsed');
-        btn.textContent = 'Tampilkan lebih sedikit';
+        btn.innerHTML = '<i class="fas fa-chevron-up"></i> Tampilkan lebih sedikit';
     } else {
         el.classList.add('collapsed');
-        btn.textContent = 'Selengkapnya';
+        btn.innerHTML = '<i class="fas fa-chevron-down"></i> Selengkapnya';
     }
 }
 
@@ -547,7 +599,7 @@ async function playEpisode(index) {
     const epNum = getEpNum(ep, index);
 
     if (!videoUrl) {
-        showToast('URL video tidak tersedia');
+        showToast('URL video tidak tersedia', 'error');
         return;
     }
 
@@ -589,21 +641,35 @@ async function playEpisode(index) {
 
 function showLockedModal() {
     const modal = document.createElement('div');
-    modal.className = 'random-modal';
+    modal.className = 'modal-overlay';
     modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     modal.innerHTML = `
-        <div class="random-modal-content">
-            <div class="random-modal-body" style="text-align:center;padding:24px;">
-                <div style="font-size:48px;margin-bottom:16px;">🔒</div>
-                <h3 style="margin-bottom:8px;">Episode Terkunci</h3>
-                <p style="margin-bottom:16px;">Episode ini memerlukan akses premium. Kamu bisa:</p>
-                <div style="text-align:left;margin-bottom:16px;">
-                    <p style="margin-bottom:8px;font-size:13px;">👑 <b>Upgrade VIP</b> - Akses semua episode</p>
-                    <p style="font-size:13px;">🎁 <b>Undang 3 Teman</b> - Dapatkan akses 24 jam gratis</p>
+        <div class="modal-content modal-enter">
+            <div class="modal-body" style="text-align:center;padding:32px 24px;">
+                <div class="locked-icon-wrapper">
+                    <i class="fas fa-lock"></i>
                 </div>
-                <div class="random-modal-actions">
-                    <button class="btn-secondary" onclick="this.closest('.random-modal').remove()">Tutup</button>
-                    <button class="btn-primary" onclick="this.closest('.random-modal').remove();showPage('upgrade')">Upgrade VIP</button>
+                <h3 style="margin-bottom:8px;font-size:20px">Episode Terkunci</h3>
+                <p style="margin-bottom:20px;color:var(--text-secondary);font-size:14px">Episode ini memerlukan akses premium</p>
+                <div class="locked-options">
+                    <div class="locked-option">
+                        <i class="fas fa-crown" style="color:#f59e0b"></i>
+                        <div>
+                            <strong>Upgrade VIP</strong>
+                            <span>Akses semua episode tanpa batas</span>
+                        </div>
+                    </div>
+                    <div class="locked-option">
+                        <i class="fas fa-gift" style="color:#e50914"></i>
+                        <div>
+                            <strong>Undang 3 Teman</strong>
+                            <span>Dapatkan akses 24 jam gratis</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-ghost" onclick="this.closest('.modal-overlay').remove()">Tutup</button>
+                    <button class="btn-primary" onclick="this.closest('.modal-overlay').remove();showPage('upgrade')"><i class="fas fa-crown"></i> Upgrade</button>
                 </div>
             </div>
         </div>`;
@@ -624,7 +690,7 @@ async function checkFavorite(bookId) {
 
 async function toggleFavorite() {
     if (!currentDrama || !currentUser.telegram_id) {
-        showToast('Silakan login via Telegram');
+        showToast('Silakan login via Telegram', 'warning');
         return;
     }
 
@@ -643,7 +709,7 @@ async function toggleFavorite() {
             });
             favorites = favorites.filter(f => f.book_id !== currentDrama.bookId);
             favBtn.innerHTML = '<i class="far fa-heart"></i>';
-            showToast('Dihapus dari favorit');
+            showToast('Dihapus dari favorit', 'info');
         } else {
             await fetch('/api/favorites', {
                 method: 'POST',
@@ -656,17 +722,17 @@ async function toggleFavorite() {
                 })
             });
             favorites.push({ book_id: currentDrama.bookId });
-            favBtn.innerHTML = '<i class="fas fa-heart" style="color:#ef4444"></i>';
-            showToast('Ditambahkan ke favorit');
+            favBtn.innerHTML = '<i class="fas fa-heart" style="color:#e50914"></i>';
+            showToast('Ditambahkan ke favorit', 'success');
         }
     } catch (e) {
-        showToast('Gagal memperbarui favorit');
+        showToast('Gagal memperbarui favorit', 'error');
     }
 }
 
 async function loadLibraryContent() {
     const container = document.getElementById('library-content');
-    container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+    container.innerHTML = renderSkeletonGrid(6);
 
     if (!currentUser.telegram_id) {
         container.innerHTML = '<div class="empty-state"><i class="fas fa-user-lock"></i><p>Login via Telegram untuk melihat library</p></div>';
@@ -685,13 +751,16 @@ async function loadLibraryContent() {
             return;
         }
 
-        container.innerHTML = '<div class="content-grid" style="padding:0;">' +
+        container.innerHTML = '<div class="content-grid">' +
             data.map((item, i) => {
                 const id = item.book_id;
                 const title = item.title || 'Tidak diketahui';
                 const cover = item.cover_url || '';
-                return `<div class="drama-card" style="animation-delay:${i * 0.05}s" onclick="openDrama('${id}', '${encodeURIComponent(title)}', '${encodeURIComponent(cover)}')">
-                    <img src="${cover}" alt="${title}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 400%22><rect fill=%22%231a2332%22 width=%22300%22 height=%22400%22/><text fill=%22%2364748b%22 x=%22150%22 y=%22200%22 text-anchor=%22middle%22 font-size=%2214%22>No Image</text></svg>'">
+                return `<div class="drama-card" style="animation-delay:${i * 0.04}s" onclick="openDrama('${id}', '${encodeURIComponent(title)}', '${encodeURIComponent(cover)}')">
+                    <div class="card-img-wrapper">
+                        <img src="${cover}" alt="${title}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 400%22><rect fill=%22%23141414%22 width=%22300%22 height=%22400%22/><text fill=%22%23444%22 x=%22150%22 y=%22200%22 text-anchor=%22middle%22 font-size=%2214%22>No Image</text></svg>'">
+                        <div class="card-overlay"><i class="fas fa-play"></i></div>
+                    </div>
                     <div class="card-title">${title}${currentLibTab === 'history' && item.episode_number ? ' <span style="color:var(--accent)">Ep ${item.episode_number}</span>' : ''}</div>
                 </div>`;
             }).join('') +
@@ -764,10 +833,12 @@ async function loadProfile() {
             <div class="profile-avatar-wrapper">
                 ${avatarHtml}
             </div>
-            <div>
+            <div class="profile-info">
                 <div class="profile-name">${userData.first_name || 'Guest'} ${userData.last_name || ''}</div>
-                <div class="profile-id">@${userData.username || '-'}</div>
-                <div class="profile-id">ID: ${userData.telegram_id || '-'}</div>
+                <div class="profile-username">@${userData.username || '-'}</div>
+                <div class="membership-badge-inline ${membershipLabel === 'VIP' || membershipLabel === 'Admin' ? 'vip' : ''}">
+                    <i class="fas ${membershipLabel === 'VIP' || membershipLabel === 'Admin' ? 'fa-crown' : 'fa-user'}"></i> ${membershipLabel}
+                </div>
             </div>
         </div>
 
@@ -786,19 +857,23 @@ async function loadProfile() {
             </div>
         </div>
 
-        <div class="membership-card">
-            <div class="membership-status">
-                <span>Keanggotaan</span>
-                <span class="membership-badge ${membershipLabel === 'VIP' || membershipLabel === 'Admin' ? 'vip' : ''}">${membershipLabel}</span>
+        ${membershipLabel !== 'Admin' ? `<div class="upgrade-banner" onclick="showPage('upgrade')">
+            <div class="upgrade-banner-content">
+                <i class="fas fa-crown"></i>
+                <div>
+                    <strong>Upgrade ke VIP</strong>
+                    <span>Akses semua drama tanpa batas</span>
+                </div>
             </div>
-            ${membershipLabel !== 'Admin' ? `<button class="btn-primary btn-full" onclick="showPage('upgrade')">
-                <i class="fas fa-crown"></i> Upgrade ke VIP
-            </button>` : ''}
-        </div>
+            <i class="fas fa-chevron-right"></i>
+        </div>` : ''}
 
         <div class="referral-section">
-            <h3 class="section-title"><i class="fas fa-gift" style="color:var(--accent);margin-right:8px;"></i>Sistem Referral</h3>
-            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Undang 3 teman = Akses penuh 24 jam GRATIS!</p>
+            <div class="referral-header">
+                <i class="fas fa-gift"></i>
+                <h3>Sistem Referral</h3>
+            </div>
+            <p class="referral-desc">Undang 3 teman = Akses penuh 24 jam GRATIS!</p>
             ${referralAccessHtml}
             <div class="referral-progress">
                 <div class="referral-progress-info">
@@ -809,10 +884,9 @@ async function loadProfile() {
                     <div class="referral-progress-fill" style="width:${progressPercent}%"></div>
                 </div>
             </div>
-            <p style="font-size:12px;color:var(--text-muted);margin:8px 0;">Bagikan link di bawah ke teman:</p>
-            <div class="referral-link">
+            <div class="referral-link-box">
                 <code id="ref-link">${refLink}</code>
-                <button class="btn-copy" onclick="copyRefLink()">Salin</button>
+                <button class="btn-copy" onclick="copyRefLink()"><i class="fas fa-copy"></i> Salin</button>
             </div>
         </div>
 
@@ -838,7 +912,7 @@ async function loadProfile() {
 function copyRefLink() {
     const link = document.getElementById('ref-link').textContent;
     navigator.clipboard.writeText(link).then(() => {
-        showToast('Link disalin!');
+        showToast('Link referral disalin!', 'success');
     }).catch(() => {
         const textarea = document.createElement('textarea');
         textarea.value = link;
@@ -846,7 +920,7 @@ function copyRefLink() {
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        showToast('Link disalin!');
+        showToast('Link referral disalin!', 'success');
     });
 }
 
@@ -854,8 +928,8 @@ async function submitReport() {
     const type = document.getElementById('issue-type').value;
     const desc = document.getElementById('issue-desc').value;
 
-    if (!type) { showToast('Pilih jenis masalah'); return; }
-    if (!desc) { showToast('Jelaskan masalahnya'); return; }
+    if (!type) { showToast('Pilih jenis masalah', 'warning'); return; }
+    if (!desc) { showToast('Jelaskan masalahnya', 'warning'); return; }
 
     try {
         await fetch('/api/report', {
@@ -867,12 +941,12 @@ async function submitReport() {
                 description: desc
             })
         });
-        showToast('Laporan berhasil dikirim!');
+        showToast('Laporan berhasil dikirim!', 'success');
         document.getElementById('issue-type').value = '';
         document.getElementById('issue-desc').value = '';
         setTimeout(() => showPage('profile'), 1000);
     } catch {
-        showToast('Gagal mengirim laporan');
+        showToast('Gagal mengirim laporan', 'error');
     }
 }
 
@@ -883,7 +957,7 @@ async function showRandomDrama() {
         let items = extractItems(data);
 
         if (!items || items.length === 0) {
-            showToast('Gagal mendapatkan drama acak');
+            showToast('Gagal mendapatkan drama acak', 'error');
             return;
         }
 
@@ -894,36 +968,38 @@ async function showRandomDrama() {
         const synopsis = drama.introduction || drama.description || drama.synopsis || drama.intro || drama.brief || '';
 
         if (!id) {
-            showToast('Gagal mendapatkan drama acak');
+            showToast('Gagal mendapatkan drama acak', 'error');
             return;
         }
 
         const modal = document.createElement('div');
-        modal.className = 'random-modal';
+        modal.className = 'modal-overlay';
         modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
         modal.innerHTML = `
-            <div class="random-modal-content">
-                <img src="${cover}" alt="${title}" onerror="this.style.display='none'">
-                <div class="random-modal-body">
-                    <h3>${title}</h3>
-                    <p>${synopsis || 'Drama China pilihan acak untukmu!'}</p>
-                    <div class="random-modal-actions">
-                        <button class="btn-secondary" onclick="this.closest('.random-modal').remove()">Tutup</button>
-                        <button class="btn-primary" onclick="this.closest('.random-modal').remove();openDrama('${id}','${encodeURIComponent(title)}','${encodeURIComponent(cover)}')">Tonton</button>
+            <div class="modal-content modal-enter">
+                <img src="${cover}" alt="${title}" onerror="this.style.display='none'" style="width:100%;height:220px;object-fit:cover;border-radius:16px 16px 0 0">
+                <div class="modal-body">
+                    <h3 style="font-size:18px;margin-bottom:8px">${title}</h3>
+                    <p style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:16px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${synopsis || 'Drama China pilihan acak untukmu!'}</p>
+                    <div class="modal-actions">
+                        <button class="btn-ghost" onclick="this.closest('.modal-overlay').remove()">Tutup</button>
+                        <button class="btn-primary" onclick="this.closest('.modal-overlay').remove();openDrama('${id}','${encodeURIComponent(title)}','${encodeURIComponent(cover)}')"><i class="fas fa-play"></i> Tonton</button>
                     </div>
                 </div>
             </div>`;
         document.body.appendChild(modal);
     } catch {
-        showToast('Gagal mendapatkan drama acak');
+        showToast('Gagal mendapatkan drama acak', 'error');
     }
 }
 
-function showToast(msg) {
+function showToast(msg, type = 'info') {
     const toast = document.getElementById('toast');
-    toast.textContent = msg;
+    const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${msg}</span>`;
     toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2500);
+    setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
 async function loadSettings() {
@@ -1013,9 +1089,9 @@ async function updateSetting(key, value) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ [key]: value })
         });
-        showToast('Pengaturan disimpan!');
+        showToast('Pengaturan disimpan!', 'success');
     } catch {
-        showToast('Gagal menyimpan pengaturan');
+        showToast('Gagal menyimpan pengaturan', 'error');
     }
 }
 
@@ -1025,14 +1101,16 @@ async function clearWatchHistory() {
         await fetch(`/api/history/${currentUser.telegram_id}`, {
             method: 'DELETE'
         });
-        showToast('Riwayat tontonan dihapus!');
+        showToast('Riwayat tontonan dihapus!', 'success');
     } catch {
-        showToast('Gagal menghapus riwayat');
+        showToast('Gagal menghapus riwayat', 'error');
     }
 }
 
 function selectPlan(el, plan) {
-    document.querySelectorAll('.pricing-item').forEach(p => p.classList.remove('selected'));
+    document.querySelectorAll('.pricing-item').forEach(p => {
+        p.classList.remove('selected');
+    });
     el.classList.add('selected');
 }
 
@@ -1040,7 +1118,7 @@ function copyTelegramId() {
     const id = currentUser.telegram_id;
     if (!id) return;
     navigator.clipboard.writeText(String(id)).then(() => {
-        showToast('Telegram ID disalin!');
+        showToast('Telegram ID disalin!', 'success');
     }).catch(() => {
         const textarea = document.createElement('textarea');
         textarea.value = String(id);
@@ -1048,7 +1126,7 @@ function copyTelegramId() {
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        showToast('Telegram ID disalin!');
+        showToast('Telegram ID disalin!', 'success');
     });
 }
 

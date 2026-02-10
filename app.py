@@ -775,7 +775,7 @@ def run_bot():
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
     from aiogram.enums import ParseMode
 
-    WEBAPP_URL = os.environ.get('WEBAPP_URL', '')
+    WEBAPP_URL = os.environ.get('WEBAPP_URL', f"https://{os.environ.get('REPLIT_DEV_DOMAIN', 'localhost:5000')}")
 
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()

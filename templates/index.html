@@ -3,23 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0a0a">
     <title>TG-DramaChina</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="/static/css/style.css?v={{ cache_bust }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
     <div id="app">
         <div id="page-home" class="page active">
             <div class="header">
-                <h1 class="logo">TG-DramaChina</h1>
-                <button class="btn-icon" onclick="showRandomDrama()" title="Drama Acak"><i class="fas fa-dice"></i></button>
+                <h1 class="logo">DramaChina</h1>
+                <button class="btn-icon" onclick="showRandomDrama()" title="Drama Acak"><i class="fas fa-shuffle"></i></button>
             </div>
             <div class="search-container" onclick="showPage('search')">
                 <div class="search-bar-fake">
                     <i class="fas fa-search"></i>
-                    <span>Cari drama...</span>
+                    <span>Cari drama favorit...</span>
                 </div>
             </div>
             <div class="tabs-container">
@@ -49,10 +50,10 @@
         </div>
 
         <div id="page-detail" class="page">
-            <div class="header">
-                <button class="btn-icon" onclick="goBackFromDetail()"><i class="fas fa-arrow-left"></i></button>
-                <h2 class="header-title" id="detail-header-title">Detail</h2>
-                <button class="btn-icon" id="btn-fav" onclick="toggleFavorite()"><i class="far fa-heart"></i></button>
+            <div class="header" style="position:absolute;background:transparent;z-index:10;width:100%">
+                <button class="btn-icon" onclick="goBackFromDetail()" style="background:rgba(0,0,0,0.5);backdrop-filter:blur(8px)"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="header-title" id="detail-header-title" style="opacity:0"></h2>
+                <button class="btn-icon" id="btn-fav" onclick="toggleFavorite()" style="background:rgba(0,0,0,0.5);backdrop-filter:blur(8px)"><i class="far fa-heart"></i></button>
             </div>
             <div id="detail-content" class="detail-content"></div>
         </div>
@@ -94,7 +95,10 @@
                 <h2 class="header-title">Pusat Bantuan</h2>
             </div>
             <div class="help-content">
-                <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;padding:12px;background:rgba(124,77,255,0.1);border-radius:8px"><i class="fas fa-info-circle" style="color:var(--primary);margin-right:6px"></i>Laporan akan dikirim langsung ke admin via Telegram.</p>
+                <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;padding:14px;background:rgba(229,9,20,0.08);border-radius:var(--radius-md);border:1px solid rgba(229,9,20,0.15);display:flex;align-items:center;gap:10px">
+                    <i class="fas fa-info-circle" style="color:var(--accent);font-size:16px"></i>
+                    <span>Laporan akan dikirim langsung ke admin via Telegram.</span>
+                </div>
                 <div class="form-group">
                     <label>Jenis Masalah</label>
                     <select id="issue-type" class="form-input">
@@ -133,9 +137,9 @@
             </div>
             <div class="about-content">
                 <div class="about-logo">
-                    <div class="about-icon"><i class="fas fa-play-circle"></i></div>
-                    <h2>TG-DramaChina</h2>
-                    <p class="about-version">Versi 2.1.0</p>
+                    <div class="about-icon"><i class="fas fa-play"></i></div>
+                    <h2>DramaChina</h2>
+                    <p class="about-version">Versi 3.0.0</p>
                 </div>
                 <div class="about-section">
                     <h3>Tentang Aplikasi</h3>
@@ -232,8 +236,8 @@
                 <span>Beranda</span>
             </button>
             <button class="nav-item" onclick="showPage('library')">
-                <i class="fas fa-book"></i>
-                <span>Perpustakaan</span>
+                <i class="fas fa-bookmark"></i>
+                <span>Koleksi</span>
             </button>
             <button class="nav-item" onclick="showPage('profile')">
                 <i class="fas fa-user"></i>
