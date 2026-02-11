@@ -1102,7 +1102,7 @@ async def _set_bot_descriptions(bot):
     except Exception as e:
         logger.error(f"Failed to set bot descriptions: {e}")
 
-WEBHOOK_PATH = "/webhook/telegram"
+WEBHOOK_PATH = "/webhook"
 
 @app.route(WEBHOOK_PATH, methods=['POST'])
 def telegram_webhook():
