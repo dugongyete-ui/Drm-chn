@@ -1075,8 +1075,9 @@ def run_bot():
         loop.close()
 
 @app.route('/health')
+@app.route('/ping')
 def health_check():
-    return jsonify({"status": "ok", "timestamp": datetime.now().isoformat()}), 200
+    return jsonify({"status": "ok"}), 200
 
 def _start_bot_with_retry(delay=3):
     time.sleep(delay)

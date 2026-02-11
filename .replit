@@ -35,8 +35,8 @@ localPort = 5000
 externalPort = 80
 
 [deployment]
-deploymentTarget = "vm"
-run = ["gunicorn", "--bind=0.0.0.0:5000", "--workers=1", "--threads=4", "--timeout=120", "wsgi:app"]
+deploymentTarget = "cloudrun"
+run = ["sh", "-c", "python app.py"]
 
 [userenv]
 
@@ -46,4 +46,4 @@ run = ["gunicorn", "--bind=0.0.0.0:5000", "--workers=1", "--threads=4", "--timeo
 WEBAPP_URL = "https://62acf781-1fb6-4458-8971-89f6936d4cce-00-n7nyinphwds1.picard.replit.dev/"
 
 [userenv.production]
-WEBAPP_URL = "https://bot-drama--nga21wcmi.replit.app"
+WEBAPP_URL = "https://bot-bot--tmcvpgg.replit.app"
