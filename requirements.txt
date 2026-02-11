@@ -4,3 +4,7 @@ aiohttp>=3.13.0
 gunicorn>=23.0.0
 psycopg2-binary>=2.9.11
 requests>=2.32.0
+flask
+flask-cors
+python-dotenv
+requests

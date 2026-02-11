@@ -50,4 +50,4 @@ run = ["gunicorn", "--bind=0.0.0.0:5000", "--workers=2", "--threads=4", "--timeo
 WEBAPP_URL = ""
 
 [userenv.production]
-WEBAPP_URL = "https://drama-bot--zan6hd.replit.app"
+WEBAPP_URL = "https://drama--zayhc.replit.app"
