@@ -1032,11 +1032,17 @@ def run_bot():
 
     async def bot_main():
         logger.info("Bot started successfully!")
-        await dp.start_polling(bot, handle_signals=False)
+        try:
+            await dp.start_polling(bot, handle_signals=False, polling_timeout=30)
+        finally:
+            await bot.session.close()
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(bot_main())
+    try:
+        loop.run_until_complete(bot_main())
+    finally:
+        loop.close()
 
 @app.route('/health')
 def health_check():
