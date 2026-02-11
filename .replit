@@ -35,15 +35,15 @@ localPort = 5000
 externalPort = 80
 
 [deployment]
-deploymentTarget = "vm"
-run = ["gunicorn", "--bind=0.0.0.0:5000", "--workers=1", "--threads=4", "--timeout=120", "wsgi:app"]
+deploymentTarget = "cloudrun"
+run = ["sh", "-c", "python app.py"]
 
 [userenv]
 
 [userenv.shared]
 
 [userenv.development]
-WEBAPP_URL = "https://37ee0581-15c5-4f3d-a969-7ee51a327bae-00-o9sehi6jvjmc.riker.replit.dev/"
+WEBAPP_URL = "https://62acf781-1fb6-4458-8971-89f6936d4cce-00-n7nyinphwds1.picard.replit.dev/"
 
 [userenv.production]
-WEBAPP_URL = "https:/drama-bot--ngzblip.replit.app"
+WEBAPP_URL = "https://bot-drama--nga21wcmi.replit.app"
