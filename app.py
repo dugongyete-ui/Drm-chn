@@ -936,27 +936,44 @@ def saweria_webhook():
         cur.close()
         conn.close()
 
-def run_bot():
+_bot_instance = None
+_dp_instance = None
+_bot_loop = None
+
+def _get_bot_webapp_url():
+    webapp_env = os.environ.get('WEBAPP_URL', '')
+    if webapp_env:
+        return webapp_env.rstrip('/')
+    if os.environ.get('REPLIT_DEPLOYMENT') == '1':
+        domains = os.environ.get('REPLIT_DOMAINS', '')
+        return f"https://{domains.split(',')[0]}" if domains else ''
+    if os.environ.get('REPLIT_DEV_DOMAIN'):
+        return f"https://{os.environ['REPLIT_DEV_DOMAIN']}"
+    return 'http://localhost:5000'
+
+def _get_webhook_base_url():
+    if os.environ.get('REPLIT_DEPLOYMENT') == '1':
+        domains = os.environ.get('REPLIT_DOMAINS', '')
+        if domains:
+            return f"https://{domains.split(',')[0]}"
+    webapp_url = os.environ.get('WEBAPP_URL', '')
+    if webapp_url:
+        return webapp_url.rstrip('/')
+    return ''
+
+def _setup_bot_and_dispatcher():
+    global _bot_instance, _dp_instance
     BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
     if not BOT_TOKEN:
         logger.warning("TELEGRAM_BOT_TOKEN not set. Bot will not start.")
-        return
+        return None, None
 
     from aiogram import Bot, Dispatcher, types as aitypes
     from aiogram.filters import CommandStart
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, FSInputFile
     from aiogram.enums import ParseMode
 
-    webapp_env = os.environ.get('WEBAPP_URL', '')
-    if webapp_env:
-        WEBAPP_URL = webapp_env.rstrip('/')
-    elif os.environ.get('REPLIT_DEPLOYMENT') == '1':
-        domains = os.environ.get('REPLIT_DOMAINS', '')
-        WEBAPP_URL = f"https://{domains.split(',')[0]}" if domains else ''
-    elif os.environ.get('REPLIT_DEV_DOMAIN'):
-        WEBAPP_URL = f"https://{os.environ['REPLIT_DEV_DOMAIN']}"
-    else:
-        WEBAPP_URL = 'http://localhost:5000'
+    WEBAPP_URL = _get_bot_webapp_url()
 
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
@@ -1030,38 +1047,109 @@ def run_bot():
             except Exception as e:
                 logger.error(f"Referral error: {e}")
 
-    async def set_bot_descriptions():
-        try:
-            bot_description = (
-                "🎬 Drama China Bot - Streaming drama China, Korea & Asia langsung di Telegram!\n\n"
-                "✨ Fitur:\n"
-                "• Ribuan drama dengan subtitle Indonesia\n"
-                "• Streaming gratis 10 episode pertama\n"
-                "• Simpan favorit & riwayat tontonan\n"
-                "• Sistem referral berhadiah akses premium\n"
-                "• VIP untuk akses semua episode tanpa batas\n\n"
-                "Klik Start untuk mulai menonton!"
-            )
-            await bot.set_my_description(description=bot_description)
-            logger.info("Bot description set successfully")
+    _bot_instance = bot
+    _dp_instance = dp
+    return bot, dp
 
-            short_description = "🎬 Streaming drama China, Korea & Asia gratis di Telegram! Nonton ribuan drama dengan subtitle Indonesia."
-            await bot.set_my_short_description(short_description=short_description)
-            logger.info("Bot short description set successfully")
+async def _set_bot_descriptions(bot):
+    try:
+        BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
+        bot_description = (
+            "🎬 Drama China Bot - Streaming drama China, Korea & Asia langsung di Telegram!\n\n"
+            "✨ Fitur:\n"
+            "• Ribuan drama dengan subtitle Indonesia\n"
+            "• Streaming gratis 10 episode pertama\n"
+            "• Simpan favorit & riwayat tontonan\n"
+            "• Sistem referral berhadiah akses premium\n"
+            "• VIP untuk akses semua episode tanpa batas\n\n"
+            "Klik Start untuk mulai menonton!"
+        )
+        await bot.set_my_description(description=bot_description)
+        logger.info("Bot description set successfully")
 
-            from aiogram.types import BotCommand
-            commands = [
-                BotCommand(command="start", description="Mulai bot & buka aplikasi"),
-            ]
-            await bot.set_my_commands(commands)
-            logger.info("Bot commands set successfully")
-        except Exception as e:
-            logger.error(f"Failed to set bot descriptions: {e}")
+        short_description = "🎬 Streaming drama China, Korea & Asia gratis di Telegram! Nonton ribuan drama dengan subtitle Indonesia."
+        await bot.set_my_short_description(short_description=short_description)
+        logger.info("Bot short description set successfully")
+
+        from aiogram.types import BotCommand
+        commands = [
+            BotCommand(command="start", description="Mulai bot & buka aplikasi"),
+        ]
+        await bot.set_my_commands(commands)
+        logger.info("Bot commands set successfully")
+    except Exception as e:
+        logger.error(f"Failed to set bot descriptions: {e}")
+
+WEBHOOK_PATH = "/webhook/telegram"
+
+@app.route(WEBHOOK_PATH, methods=['POST'])
+def telegram_webhook():
+    global _bot_instance, _dp_instance, _bot_loop
+    if not _bot_instance or not _dp_instance or not _bot_loop:
+        return jsonify({"error": "Bot not initialized"}), 503
+    try:
+        from aiogram.types import Update
+        update_data = request.get_json(force=True)
+        update = Update.model_validate(update_data, context={"bot": _bot_instance})
+        future = asyncio.run_coroutine_threadsafe(
+            _dp_instance.feed_update(bot=_bot_instance, update=update),
+            _bot_loop
+        )
+        future.result(timeout=30)
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.error(f"Webhook processing error: {e}")
+        return jsonify({"ok": True})
+
+def _start_webhook_bot(delay=3):
+    global _bot_instance, _dp_instance, _bot_loop
+    time.sleep(delay)
+
+    BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not BOT_TOKEN:
+        logger.warning("TELEGRAM_BOT_TOKEN not set. Bot webhook will not start.")
+        return
+
+    bot, dp = _setup_bot_and_dispatcher()
+    if not bot or not dp:
+        return
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    _bot_loop = loop
+
+    async def _init_webhook():
+        await _set_bot_descriptions(bot)
+        webhook_base = _get_webhook_base_url()
+        if not webhook_base:
+            logger.error("Cannot determine webhook URL. WEBAPP_URL or REPLIT_DOMAINS must be set.")
+            return False
+        webhook_url = f"{webhook_base}{WEBHOOK_PATH}"
+        await bot.set_webhook(
+            url=webhook_url,
+            drop_pending_updates=True,
+            allowed_updates=["message", "callback_query", "inline_query"]
+        )
+        logger.info(f"Webhook set successfully to: {webhook_url}")
+        return True
+
+    try:
+        success = loop.run_until_complete(_init_webhook())
+        if success:
+            logger.info("Bot webhook mode initialized! Bot is ready to receive updates.")
+            loop.run_forever()
+    except Exception as e:
+        logger.error(f"Webhook setup error: {e}")
+
+def run_bot():
+    bot, dp = _setup_bot_and_dispatcher()
+    if not bot or not dp:
+        return
 
     async def bot_main():
         await bot.delete_webhook(drop_pending_updates=True)
-        await set_bot_descriptions()
-        logger.info("Bot started successfully!")
+        await _set_bot_descriptions(bot)
+        logger.info("Bot started successfully (polling mode)!")
         try:
             await dp.start_polling(bot, handle_signals=False, polling_timeout=30)
         finally:
@@ -1079,7 +1167,7 @@ def run_bot():
 def health_check():
     return jsonify({"status": "ok"}), 200
 
-def _start_bot_with_retry(delay=3):
+def _start_bot_with_retry(delay=3, use_webhook=False):
     time.sleep(delay)
     retry_count = 0
     while True:
@@ -1090,8 +1178,12 @@ def _start_bot_with_retry(delay=3):
             time.sleep(30)
             continue
         try:
-            logger.info(f"Starting bot (attempt #{retry_count})...")
-            run_bot()
+            if use_webhook:
+                logger.info(f"Starting bot in WEBHOOK mode (attempt #{retry_count})...")
+                _start_webhook_bot(0)
+            else:
+                logger.info(f"Starting bot in POLLING mode (attempt #{retry_count})...")
+                run_bot()
         except Exception as e:
             logger.error(f"Bot crashed: {e}")
             import traceback
@@ -1103,16 +1195,29 @@ def _start_bot_with_retry(delay=3):
 if __name__ == '__main__':
     init_db()
 
-    # If WEBAPP_URL is not set, try to use the dev domain
-    if not os.environ.get('WEBAPP_URL'):
-        dev_domain = os.environ.get('REPLIT_DEV_DOMAIN')
-        if dev_domain:
-            os.environ['WEBAPP_URL'] = f"https://{dev_domain}"
-            logger.info(f"Automatically set WEBAPP_URL to {os.environ['WEBAPP_URL']}")
+    is_deployment = os.environ.get('REPLIT_DEPLOYMENT') == '1'
 
-    bot_thread = threading.Thread(target=_start_bot_with_retry, daemon=True)
+    if not os.environ.get('WEBAPP_URL'):
+        if is_deployment:
+            domains = os.environ.get('REPLIT_DOMAINS', '')
+            if domains:
+                os.environ['WEBAPP_URL'] = f"https://{domains.split(',')[0]}"
+                logger.info(f"Automatically set WEBAPP_URL to {os.environ['WEBAPP_URL']}")
+        else:
+            dev_domain = os.environ.get('REPLIT_DEV_DOMAIN')
+            if dev_domain:
+                os.environ['WEBAPP_URL'] = f"https://{dev_domain}"
+                logger.info(f"Automatically set WEBAPP_URL to {os.environ['WEBAPP_URL']}")
+
+    if is_deployment:
+        logger.info("Running in DEPLOYMENT mode - using webhook for bot")
+        bot_thread = threading.Thread(target=_start_bot_with_retry, args=(3, True), daemon=True)
+    else:
+        logger.info("Running in DEVELOPMENT mode - using polling for bot")
+        bot_thread = threading.Thread(target=_start_bot_with_retry, args=(3, False), daemon=True)
+
     bot_thread.start()
-    logger.info("Bot thread started in development mode")
+    logger.info(f"Bot thread started ({'webhook' if is_deployment else 'polling'} mode)")
 
     port = int(os.environ.get('PORT', 5000))
     logger.info(f"Starting web server on port {port}...")

@@ -21,9 +21,9 @@ def _background_init():
         _db_initialized = True
 
     time.sleep(5)
-    logger.info("Starting bot thread...")
-    _start_bot_with_retry(0)
+    logger.info("Starting bot thread in WEBHOOK mode for production...")
+    _start_bot_with_retry(0, use_webhook=True)
 
 bg_thread = threading.Thread(target=_background_init, daemon=True)
 bg_thread.start()
-logger.info("Background init thread started (db + bot)")
+logger.info("Background init thread started (db + bot webhook)")
