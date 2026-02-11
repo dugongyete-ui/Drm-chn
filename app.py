@@ -1081,6 +1081,27 @@ def health_check():
 if __name__ == '__main__':
     init_db()
 
+    bot_thread = threading.Thread(target=lambda: _start_bot_with_retry(), daemon=True)
+    bot_thread.start()
+    logger.info("Bot thread started in development mode")
+
     port = int(os.environ.get('PORT', 5000))
-    logger.info(f"Starting web server on port {port} (dev mode, bot managed by production only)...")
+    logger.info(f"Starting web server on port {port}...")
     app.run(host='0.0.0.0', port=port, debug=False)
+
+def _start_bot_with_retry():
+    import time as _time
+    _time.sleep(3)
+    retry_count = 0
+    while True:
+        retry_count += 1
+        try:
+            logger.info(f"Starting bot (attempt #{retry_count})...")
+            run_bot()
+        except Exception as e:
+            logger.error(f"Bot crashed: {e}")
+            import traceback
+            traceback.print_exc()
+        wait = min(60, 5 * retry_count)
+        logger.info(f"Restarting bot in {wait}s...")
+        _time.sleep(wait)
