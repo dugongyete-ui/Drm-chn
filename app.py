@@ -1030,8 +1030,37 @@ def run_bot():
             except Exception as e:
                 logger.error(f"Referral error: {e}")
 
+    async def set_bot_descriptions():
+        try:
+            bot_description = (
+                "🎬 Drama China Bot - Streaming drama China, Korea & Asia langsung di Telegram!\n\n"
+                "✨ Fitur:\n"
+                "• Ribuan drama dengan subtitle Indonesia\n"
+                "• Streaming gratis 10 episode pertama\n"
+                "• Simpan favorit & riwayat tontonan\n"
+                "• Sistem referral berhadiah akses premium\n"
+                "• VIP untuk akses semua episode tanpa batas\n\n"
+                "Klik Start untuk mulai menonton!"
+            )
+            await bot.set_my_description(description=bot_description)
+            logger.info("Bot description set successfully")
+
+            short_description = "🎬 Streaming drama China, Korea & Asia gratis di Telegram! Nonton ribuan drama dengan subtitle Indonesia."
+            await bot.set_my_short_description(short_description=short_description)
+            logger.info("Bot short description set successfully")
+
+            from aiogram.types import BotCommand
+            commands = [
+                BotCommand(command="start", description="Mulai bot & buka aplikasi"),
+            ]
+            await bot.set_my_commands(commands)
+            logger.info("Bot commands set successfully")
+        except Exception as e:
+            logger.error(f"Failed to set bot descriptions: {e}")
+
     async def bot_main():
         await bot.delete_webhook(drop_pending_updates=True)
+        await set_bot_descriptions()
         logger.info("Bot started successfully!")
         try:
             await dp.start_polling(bot, handle_signals=False, polling_timeout=30)
