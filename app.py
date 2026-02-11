@@ -159,6 +159,28 @@ def proxy_api(endpoint):
         logger.error(f"API proxy error: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/imgproxy')
+def image_proxy():
+    import requests as req
+    url = request.args.get('url', '')
+    if not url:
+        return '', 400
+    try:
+        resp = req.get(url, timeout=10, headers={
+            'Referer': '',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+        if resp.status_code == 200:
+            content_type = resp.headers.get('Content-Type', 'image/jpeg')
+            from flask import Response
+            return Response(resp.content, content_type=content_type, headers={
+                'Cache-Control': 'public, max-age=86400',
+                'Access-Control-Allow-Origin': '*'
+            })
+        return '', resp.status_code
+    except Exception:
+        return '', 502
+
 @app.route('/api/user', methods=['GET', 'POST'])
 def upsert_user():
     if request.method == 'GET':
