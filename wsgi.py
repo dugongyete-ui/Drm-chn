@@ -10,21 +10,22 @@ from keep_alive import start_keep_alive
 
 init_db()
 
-def resilient_bot():
-    max_retries = 0
+def delayed_bot_start():
+    time.sleep(10)
+    retry_count = 0
     while True:
-        max_retries += 1
+        retry_count += 1
         try:
-            logger.info(f"Starting bot (attempt #{max_retries})...")
+            logger.info(f"Starting bot (attempt #{retry_count})...")
             run_bot()
         except Exception as e:
             logger.error(f"Bot crashed: {e}")
-        wait = min(10, max_retries * 2)
+        wait = min(30, 5 * retry_count)
         logger.info(f"Restarting bot in {wait}s...")
         time.sleep(wait)
 
-bot_thread = threading.Thread(target=resilient_bot, daemon=True)
+bot_thread = threading.Thread(target=delayed_bot_start, daemon=True)
 bot_thread.start()
-logger.info("Bot thread started via gunicorn")
+logger.info("Bot thread scheduled (starts after 10s delay for health check)")
 
 start_keep_alive()

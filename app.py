@@ -1031,6 +1031,7 @@ def run_bot():
                 logger.error(f"Referral error: {e}")
 
     async def bot_main():
+        await bot.delete_webhook(drop_pending_updates=True)
         logger.info("Bot started successfully!")
         try:
             await dp.start_polling(bot, handle_signals=False, polling_timeout=30)
@@ -1050,9 +1051,7 @@ def health_check():
 
 if __name__ == '__main__':
     init_db()
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
 
     port = int(os.environ.get('PORT', 5000))
-    logger.info(f"Starting web server on port {port}...")
+    logger.info(f"Starting web server on port {port} (dev mode, bot managed by production only)...")
     app.run(host='0.0.0.0', port=port, debug=False)
