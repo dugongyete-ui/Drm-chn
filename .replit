@@ -39,9 +39,8 @@ localPort = 8099
 externalPort = 8099
 
 [deployment]
-deploymentTarget = "vm"
-run = ["bash", "-c", "gunicorn --bind=0.0.0.0:5000 --workers=1 --threads=4 --timeout=120 wsgi:app"]
-build = ["bash", "-c", "echo 'No build step needed'"]
+deploymentTarget = "cloudrun"
+run = ["sh", "-c", "gunicorn --bind=0.0.0.0:5000 --workers=2 --threads=4 --timeout=120 --worker-class=gthread wsgi:app"]
 
 [userenv]
 
