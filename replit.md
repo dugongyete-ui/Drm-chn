@@ -52,10 +52,11 @@ Bot Telegram untuk streaming drama China, Korea & Asia. Terintegrasi dengan Dram
 - Logika: jumlah donasi menentukan paket (threshold tertinggi yang terpenuhi)
 
 ## Recent Changes
+- 2026-02-11: Fixed bot not responding in production: changed gunicorn to 1 worker (was 2 workers causing webhook conflicts), added init lock in wsgi.py to prevent duplicate bot initialization, improved webhook error handling and logging, stopped dropping pending updates on webhook setup
 - 2026-02-11: Switched bot from polling to webhook mode for production deployment - fixes bot not responding after deploy (polling conflict issue)
 - 2026-02-11: Added /webhook/telegram endpoint for receiving Telegram updates in production
 - 2026-02-11: Development still uses polling mode, production uses webhook mode automatically
-- 2026-02-11: Fixed deployment health check failure: optimized health endpoint, set VM deployment with gunicorn (2 workers, preload), increased bot startup delay to 10s for production
+- 2026-02-11: Fixed deployment health check failure: optimized health endpoint, set VM deployment with gunicorn (1 worker, gthread), increased bot startup delay to 10s for production
 - 2026-02-11: Fixed bot not responding: bot now runs in both dev and production with auto-retry mechanism
 - 2026-02-11: Shared _start_bot_with_retry() between app.py and wsgi.py for consistent behavior
 - 2026-02-11: Added bot description (chat & profile) and bot commands via Telegram API (setMyDescription, setMyShortDescription, setMyCommands)
