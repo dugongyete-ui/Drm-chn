@@ -36,9 +36,12 @@ Bot Telegram untuk streaming drama China, Korea & Asia. Terintegrasi dengan Dram
 - `SAWERIA_STREAM_KEY` - Saweria webhook signature key
 
 ### Deployment
-- Target: Autoscale
+- Target: VM (always-on, required for Telegram bot polling)
 - Run command: `gunicorn --bind=0.0.0.0:5000 --workers=1 --threads=4 --timeout=120 wsgi:app`
 - Development: `python app.py` on port 5000
+- Bot uses polling mode → needs always-on server (VM, not autoscale)
+- wsgi.py has auto-recovery: if bot crashes, it restarts automatically
+- keep_alive.py pings /health every 4 min as extra safety
 
 ## Subscription Plans (Saweria)
 - 3 Hari VIP: Rp 3.000+ (min donation)
