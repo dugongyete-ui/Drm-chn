@@ -63,14 +63,37 @@ async def start_handler(message: types.Message):
 
     await message.answer(welcome_text, parse_mode=ParseMode.HTML, reply_markup=keyboard)
 
+    # Automatically register user if WEBAPP_URL is set
+    if WEBAPP_URL:
+        try:
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                async with session.post(f"{WEBAPP_URL}/api/user", json={
+                    "telegram_id": user.id,
+                    "username": user.username or '',
+                    "first_name": user.first_name or '',
+                    "last_name": user.last_name or '',
+                    "avatar_url": avatar_url
+                }) as resp:
+                    if resp.status == 200:
+                        logger.info(f"User {user.id} registered successfully via bot")
+                    else:
+                        logger.error(f"User register error: {resp.status}")
+        except Exception as e:
+            logger.error(f"User register error: {e}")
+
     if ref_code and ref_code.startswith('ref_') and WEBAPP_URL:
         try:
             import aiohttp
             async with aiohttp.ClientSession() as session:
-                await session.post(f"{WEBAPP_URL}/api/referral", json={
+                async with session.post(f"{WEBAPP_URL}/api/referral", json={
                     "telegram_id": user.id,
                     "ref_code": ref_code
-                })
+                }) as resp:
+                    if resp.status == 200:
+                        logger.info(f"Referral for {user.id} processed successfully")
+                    else:
+                        logger.error(f"Referral error: {resp.status}")
         except Exception as e:
             logger.error(f"Referral error: {e}")
 

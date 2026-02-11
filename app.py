@@ -1103,6 +1103,13 @@ def _start_bot_with_retry(delay=3):
 if __name__ == '__main__':
     init_db()
 
+    # If WEBAPP_URL is not set, try to use the dev domain
+    if not os.environ.get('WEBAPP_URL'):
+        dev_domain = os.environ.get('REPLIT_DEV_DOMAIN')
+        if dev_domain:
+            os.environ['WEBAPP_URL'] = f"https://{dev_domain}"
+            logger.info(f"Automatically set WEBAPP_URL to {os.environ['WEBAPP_URL']}")
+
     bot_thread = threading.Thread(target=_start_bot_with_retry, daemon=True)
     bot_thread.start()
     logger.info("Bot thread started in development mode")
