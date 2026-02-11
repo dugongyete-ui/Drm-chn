@@ -43,7 +43,7 @@ run = ["gunicorn", "--bind=0.0.0.0:5000", "--workers=1", "--threads=4", "--timeo
 [userenv.shared]
 
 [userenv.development]
-WEBAPP_URL = "https://143faab4-d30f-471f-89ed-363eccef1d33-00-bxlqjrort3bs.riker.replit.dev/"
+WEBAPP_URL = "https://37ee0581-15c5-4f3d-a969-7ee51a327bae-00-o9sehi6jvjmc.riker.replit.dev/"
 
 [userenv.production]
-WEBAPP_URL = "https://bot-drama--h0k31dvet.replit.app"
+WEBAPP_URL = "https:/drama-bot--ngzblip.replit.app"
