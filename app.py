@@ -1086,10 +1086,12 @@ WEBHOOK_PATH = "/webhook/telegram"
 def telegram_webhook():
     global _bot_instance, _dp_instance, _bot_loop
     if not _bot_instance or not _dp_instance or not _bot_loop:
-        return jsonify({"error": "Bot not initialized"}), 503
+        logger.warning("Webhook received but bot not yet initialized, returning ok")
+        return jsonify({"ok": True})
     try:
         from aiogram.types import Update
         update_data = request.get_json(force=True)
+        logger.info(f"Webhook received update: {update_data.get('update_id', 'unknown')}")
         update = Update.model_validate(update_data, context={"bot": _bot_instance})
         future = asyncio.run_coroutine_threadsafe(
             _dp_instance.feed_update(bot=_bot_instance, update=update),
@@ -1099,6 +1101,8 @@ def telegram_webhook():
         return jsonify({"ok": True})
     except Exception as e:
         logger.error(f"Webhook processing error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"ok": True})
 
 def _start_webhook_bot(delay=3):
@@ -1112,6 +1116,7 @@ def _start_webhook_bot(delay=3):
 
     bot, dp = _setup_bot_and_dispatcher()
     if not bot or not dp:
+        logger.error("Failed to setup bot and dispatcher")
         return
 
     loop = asyncio.new_event_loop()
@@ -1119,27 +1124,48 @@ def _start_webhook_bot(delay=3):
     _bot_loop = loop
 
     async def _init_webhook():
-        await _set_bot_descriptions(bot)
+        try:
+            await _set_bot_descriptions(bot)
+        except Exception as e:
+            logger.error(f"Failed to set bot descriptions: {e}")
+
         webhook_base = _get_webhook_base_url()
+        logger.info(f"Webhook base URL: {webhook_base}")
         if not webhook_base:
-            logger.error("Cannot determine webhook URL. WEBAPP_URL or REPLIT_DOMAINS must be set.")
+            webapp_url = os.environ.get('WEBAPP_URL', '')
+            domains = os.environ.get('REPLIT_DOMAINS', '')
+            logger.error(f"Cannot determine webhook URL. WEBAPP_URL='{webapp_url}', REPLIT_DOMAINS='{domains}'")
             return False
         webhook_url = f"{webhook_base}{WEBHOOK_PATH}"
-        await bot.set_webhook(
-            url=webhook_url,
-            drop_pending_updates=True,
-            allowed_updates=["message", "callback_query", "inline_query"]
-        )
-        logger.info(f"Webhook set successfully to: {webhook_url}")
-        return True
+        logger.info(f"Setting webhook to: {webhook_url}")
+        try:
+            await bot.delete_webhook(drop_pending_updates=False)
+            await bot.set_webhook(
+                url=webhook_url,
+                drop_pending_updates=False,
+                allowed_updates=["message", "callback_query", "inline_query"]
+            )
+            webhook_info = await bot.get_webhook_info()
+            logger.info(f"Webhook info: url={webhook_info.url}, pending={webhook_info.pending_update_count}, last_error={webhook_info.last_error_message}")
+            logger.info(f"Webhook set successfully to: {webhook_url}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to set webhook: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
 
     try:
         success = loop.run_until_complete(_init_webhook())
         if success:
             logger.info("Bot webhook mode initialized! Bot is ready to receive updates.")
             loop.run_forever()
+        else:
+            logger.error("Webhook initialization failed!")
     except Exception as e:
         logger.error(f"Webhook setup error: {e}")
+        import traceback
+        traceback.print_exc()
 
 def run_bot():
     bot, dp = _setup_bot_and_dispatcher()
