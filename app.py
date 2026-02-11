@@ -974,13 +974,16 @@ def _get_bot_webapp_url():
     return 'http://localhost:5000'
 
 def _get_webhook_base_url():
+    webapp_url = os.environ.get('WEBAPP_URL', '')
+    if webapp_url:
+        return webapp_url.rstrip('/')
     if os.environ.get('REPLIT_DEPLOYMENT') == '1':
         domains = os.environ.get('REPLIT_DOMAINS', '')
         if domains:
             return f"https://{domains.split(',')[0]}"
-    webapp_url = os.environ.get('WEBAPP_URL', '')
-    if webapp_url:
-        return webapp_url.rstrip('/')
+    dev_domain = os.environ.get('REPLIT_DEV_DOMAIN', '')
+    if dev_domain:
+        return f"https://{dev_domain}"
     return ''
 
 def _setup_bot_and_dispatcher():
