@@ -40,7 +40,7 @@ externalPort = 8099
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["gunicorn", "wsgi:app", "--workers", "1", "--threads", "1", "--bind", "0.0.0.0:5000"]
+run = ["sh", "-c", "gunicorn app:app --workers 1 --threads 1"]
 
 [userenv]
 
