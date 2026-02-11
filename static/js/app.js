@@ -1,4 +1,8 @@
 const API_BASE = '/api/proxy';
+function imgProxy(url) {
+    if (!url) return '';
+    return '/api/imgproxy?url=' + encodeURIComponent(url);
+}
 let currentUser = null;
 let currentDrama = null;
 let currentEpisodes = [];
@@ -375,7 +379,7 @@ function renderDramaCard(item, index) {
 
     return `<div class="drama-card" style="animation-delay:${index * 0.04}s" onclick="openDrama('${id}', '${encodeURIComponent(title)}', '${encodeURIComponent(cover)}')">
         <div class="card-img-wrapper">
-            <img src="${cover}" alt="${title}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 400%22><rect fill=%22%23141414%22 width=%22300%22 height=%22400%22/><text fill=%22%23444%22 x=%22150%22 y=%22200%22 text-anchor=%22middle%22 font-size=%2214%22>No Image</text></svg>'">
+            <img src="${imgProxy(cover)}" alt="${title}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 400%22><rect fill=%22%23141414%22 width=%22300%22 height=%22400%22/><text fill=%22%23444%22 x=%22150%22 y=%22200%22 text-anchor=%22middle%22 font-size=%2214%22>No Image</text></svg>'">
             <div class="card-overlay">
                 <i class="fas fa-play"></i>
             </div>
@@ -586,7 +590,7 @@ async function openDrama(bookId, encodedTitle, encodedCover) {
 
         container.innerHTML = `
             <div class="detail-hero">
-                <img class="detail-cover" src="${currentDrama.cover}" alt="${currentDrama.title}" onerror="this.style.display='none'">
+                <img class="detail-cover" src="${imgProxy(currentDrama.cover)}" alt="${currentDrama.title}" onerror="this.style.display='none'">
                 <div class="detail-cover-gradient"></div>
             </div>
             <div class="detail-info">
@@ -870,7 +874,7 @@ async function loadLibraryContent() {
                 const cover = item.cover_url || '';
                 return `<div class="drama-card" style="animation-delay:${i * 0.04}s" onclick="openDrama('${id}', '${encodeURIComponent(title)}', '${encodeURIComponent(cover)}')">
                     <div class="card-img-wrapper">
-                        <img src="${cover}" alt="${title}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 400%22><rect fill=%22%23141414%22 width=%22300%22 height=%22400%22/><text fill=%22%23444%22 x=%22150%22 y=%22200%22 text-anchor=%22middle%22 font-size=%2214%22>No Image</text></svg>'">
+                        <img src="${imgProxy(cover)}" alt="${title}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 400%22><rect fill=%22%23141414%22 width=%22300%22 height=%22400%22/><text fill=%22%23444%22 x=%22150%22 y=%22200%22 text-anchor=%22middle%22 font-size=%2214%22>No Image</text></svg>'">
                         <div class="card-overlay"><i class="fas fa-play"></i></div>
                     </div>
                     <div class="card-title">${title}${currentLibTab === 'history' && item.episode_number ? ' <span style="color:var(--accent)">Ep ${item.episode_number}</span>' : ''}</div>
@@ -1195,7 +1199,7 @@ async function showRandomDrama() {
         modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
         modal.innerHTML = `
             <div class="modal-content modal-enter">
-                <img src="${cover}" alt="${title}" onerror="this.style.display='none'" style="width:100%;height:220px;object-fit:cover;border-radius:16px 16px 0 0">
+                <img src="${imgProxy(cover)}" alt="${title}" onerror="this.style.display='none'" style="width:100%;height:220px;object-fit:cover;border-radius:16px 16px 0 0">
                 <div class="modal-body">
                     <h3 style="font-size:18px;margin-bottom:8px">${title}</h3>
                     <p style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:16px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${synopsis || 'Drama China pilihan acak untukmu!'}</p>
