@@ -1192,6 +1192,9 @@ def _start_webhook_bot(delay=3):
         import traceback
         traceback.print_exc()
 
+class WebhookActiveError(Exception):
+    pass
+
 def run_bot():
     bot, dp = _setup_bot_and_dispatcher()
     if not bot or not dp:
@@ -1204,7 +1207,7 @@ def run_bot():
             logger.info("Skipping polling mode to avoid conflicting with production webhook.")
             logger.info("Bot will NOT run in dev mode. Use the deployed version instead.")
             await bot.session.close()
-            return
+            raise WebhookActiveError("Production webhook is active, skipping polling mode.")
         await bot.delete_webhook(drop_pending_updates=True)
         await _set_bot_descriptions(bot)
         logger.info("Bot started successfully (polling mode)!")
@@ -1242,6 +1245,9 @@ def _start_bot_with_retry(delay=3, use_webhook=False):
             else:
                 logger.info(f"Starting bot in POLLING mode (attempt #{retry_count})...")
                 run_bot()
+        except WebhookActiveError:
+            logger.info("Production webhook is active. Dev polling will not start. Stopping retry loop.")
+            return
         except Exception as e:
             logger.error(f"Bot crashed: {e}")
             import traceback
