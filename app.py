@@ -1198,6 +1198,13 @@ def run_bot():
         return
 
     async def bot_main():
+        webhook_info = await bot.get_webhook_info()
+        if webhook_info.url:
+            logger.info(f"Production webhook is active at {webhook_info.url}")
+            logger.info("Skipping polling mode to avoid conflicting with production webhook.")
+            logger.info("Bot will NOT run in dev mode. Use the deployed version instead.")
+            await bot.session.close()
+            return
         await bot.delete_webhook(drop_pending_updates=True)
         await _set_bot_descriptions(bot)
         logger.info("Bot started successfully (polling mode)!")
