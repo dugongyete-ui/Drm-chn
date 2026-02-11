@@ -1078,20 +1078,8 @@ def run_bot():
 def health_check():
     return jsonify({"status": "ok", "timestamp": datetime.now().isoformat()}), 200
 
-if __name__ == '__main__':
-    init_db()
-
-    bot_thread = threading.Thread(target=lambda: _start_bot_with_retry(), daemon=True)
-    bot_thread.start()
-    logger.info("Bot thread started in development mode")
-
-    port = int(os.environ.get('PORT', 5000))
-    logger.info(f"Starting web server on port {port}...")
-    app.run(host='0.0.0.0', port=port, debug=False)
-
-def _start_bot_with_retry():
-    import time as _time
-    _time.sleep(3)
+def _start_bot_with_retry(delay=3):
+    time.sleep(delay)
     retry_count = 0
     while True:
         retry_count += 1
@@ -1103,5 +1091,16 @@ def _start_bot_with_retry():
             import traceback
             traceback.print_exc()
         wait = min(60, 5 * retry_count)
-        logger.info(f"Restarting bot in {wait}s...")
-        _time.sleep(wait)
+        logger.info(f"Bot stopped. Restarting in {wait}s...")
+        time.sleep(wait)
+
+if __name__ == '__main__':
+    init_db()
+
+    bot_thread = threading.Thread(target=_start_bot_with_retry, daemon=True)
+    bot_thread.start()
+    logger.info("Bot thread started in development mode")
+
+    port = int(os.environ.get('PORT', 5000))
+    logger.info(f"Starting web server on port {port}...")
+    app.run(host='0.0.0.0', port=port, debug=False)
