@@ -2,16 +2,28 @@ import os
 import threading
 import logging
 import time
-import traceback
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from app import app, init_db, _start_bot_with_retry
 
-init_db()
-logger.info("Database initialized for production")
+_db_initialized = False
 
-bot_thread = threading.Thread(target=_start_bot_with_retry, args=(10,), daemon=True)
-bot_thread.start()
-logger.info("Bot thread scheduled (starts after 10s delay)")
+def _background_init():
+    global _db_initialized
+    try:
+        init_db()
+        _db_initialized = True
+        logger.info("Database initialized for production")
+    except Exception as e:
+        logger.error(f"Database init error: {e}")
+        _db_initialized = True
+
+    time.sleep(5)
+    logger.info("Starting bot thread...")
+    _start_bot_with_retry(0)
+
+bg_thread = threading.Thread(target=_background_init, daemon=True)
+bg_thread.start()
+logger.info("Background init thread started (db + bot)")

@@ -34,9 +34,13 @@ waitForPort = 5000
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 8099
+externalPort = 8099
+
 [deployment]
 deploymentTarget = "vm"
-run = ["gunicorn", "wsgi:app", "--bind=0.0.0.0:5000", "--workers=2", "--timeout=120", "--preload"]
+run = ["gunicorn", "wsgi:app", "--bind=0.0.0.0:5000", "--workers=1", "--threads=4", "--timeout=120"]
 
 [userenv]
 
