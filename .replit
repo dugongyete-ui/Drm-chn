@@ -43,7 +43,7 @@ run = ["gunicorn", "wsgi:app", "--bind=0.0.0.0:5000", "--workers=2", "--timeout=
 [userenv.shared]
 
 [userenv.development]
-WEBAPP_URL = "https://62acf781-1fb6-4458-8971-89f6936d4cce-00-n7nyinphwds1.picard.replit.dev/"
+WEBAPP_URL = ""
 
 [userenv.production]
 WEBAPP_URL = "https://bot-bot--tmcvpgg.replit.app"
