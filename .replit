@@ -50,4 +50,4 @@ run = ["gunicorn", "wsgi:app", "--bind=0.0.0.0:5000", "--workers=1", "--threads=
 WEBAPP_URL = ""
 
 [userenv.production]
-WEBAPP_URL = "https://bot-bot--tmcvpgg.replit.app"
+WEBAPP_URL = "https://drama-bot--zan6hd.replit.app"

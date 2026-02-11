@@ -1084,6 +1084,11 @@ def _start_bot_with_retry(delay=3):
     retry_count = 0
     while True:
         retry_count += 1
+        BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
+        if not BOT_TOKEN:
+            logger.warning("TELEGRAM_BOT_TOKEN not set. Bot will not start. Checking again in 30s...")
+            time.sleep(30)
+            continue
         try:
             logger.info(f"Starting bot (attempt #{retry_count})...")
             run_bot()
