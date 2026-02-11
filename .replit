@@ -50,4 +50,4 @@ run = ["sh", "-c", "gunicorn app:app --workers 1 --threads 1"]
 WEBAPP_URL = ""
 
 [userenv.production]
-WEBAPP_URL = "https://pbktdrama-hub--ngi32mv.replit.app"
+WEBAPP_URL = "https://bot-bot--tmekxvbh.replit.app"
