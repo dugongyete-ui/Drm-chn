@@ -51,6 +51,8 @@ Bot Telegram untuk streaming drama China, Korea & Asia. Terintegrasi dengan Dram
 - Logika: jumlah donasi menentukan paket (threshold tertinggi yang terpenuhi)
 
 ## Recent Changes
+- 2026-02-11: Fixed bot not responding: bot now runs in both dev and production with auto-retry mechanism
+- 2026-02-11: Shared _start_bot_with_retry() between app.py and wsgi.py for consistent behavior
 - 2026-02-11: Added bot description (chat & profile) and bot commands via Telegram API (setMyDescription, setMyShortDescription, setMyCommands)
 - 2026-02-11: Re-confirmed deployment target as VM (was accidentally set to Autoscale causing polling conflicts)
 - 2026-02-11: Fixed deployment: VM always-on, bot only runs in production (not dev), delayed start for health check
