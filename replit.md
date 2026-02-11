@@ -5,7 +5,7 @@ Bot Telegram untuk streaming drama China, Korea & Asia. Terintegrasi dengan Dram
 
 ## Current State
 - Production-ready dengan gunicorn
-- Bot Telegram aktif menggunakan aiogram (polling mode)
+- Bot Telegram aktif menggunakan aiogram (webhook mode untuk production, polling mode untuk development)
 - Web app Flask sebagai backend API + dashboard
 - Database PostgreSQL (Neon-backed via Replit)
 
@@ -36,10 +36,11 @@ Bot Telegram untuk streaming drama China, Korea & Asia. Terintegrasi dengan Dram
 - `SAWERIA_STREAM_KEY` - Saweria webhook signature key
 
 ### Deployment
-- Target: VM (always-on, required for Telegram bot polling)
+- Target: VM (always-on)
 - Run command: `gunicorn --bind=0.0.0.0:5000 --workers=1 --threads=4 --timeout=120 wsgi:app`
-- Development: `python app.py` on port 5000
-- Bot uses polling mode → needs always-on server (VM, not autoscale)
+- Development: `python app.py` on port 5000 (bot uses polling mode)
+- Production: wsgi.py starts bot in webhook mode (Telegram sends updates to /webhook/telegram)
+- Webhook mode eliminates polling conflicts when deployed
 - wsgi.py has auto-recovery: if bot crashes, it restarts automatically
 - keep_alive.py pings /health every 4 min as extra safety
 
@@ -51,6 +52,9 @@ Bot Telegram untuk streaming drama China, Korea & Asia. Terintegrasi dengan Dram
 - Logika: jumlah donasi menentukan paket (threshold tertinggi yang terpenuhi)
 
 ## Recent Changes
+- 2026-02-11: Switched bot from polling to webhook mode for production deployment - fixes bot not responding after deploy (polling conflict issue)
+- 2026-02-11: Added /webhook/telegram endpoint for receiving Telegram updates in production
+- 2026-02-11: Development still uses polling mode, production uses webhook mode automatically
 - 2026-02-11: Fixed deployment health check failure: optimized health endpoint, set VM deployment with gunicorn (2 workers, preload), increased bot startup delay to 10s for production
 - 2026-02-11: Fixed bot not responding: bot now runs in both dev and production with auto-retry mechanism
 - 2026-02-11: Shared _start_bot_with_retry() between app.py and wsgi.py for consistent behavior
